@@ -1,13 +1,13 @@
 import pygame
 
 class Board:
-    def __init__(self, player_color):
-        self.square_size = 85
+    def __init__(self, player_color, board_size):
         self.player_color = player_color
-        self.white_sq_color = (40,34,15)
-        self.black_sq_color = (120,100,50)
+        self.white_sq_color = (255,255,255)
+        self.black_sq_color = (125,215,100)
         self.border = 20
-        self.pieces = pygame.image.load("./assets/pieces.png")
+        self.square_size = (board_size - self.border*2)/8
+        self.pieces = [[None]*8 for i in range(8)]
 
     def draw(self, window):
         if self.player_color == "white":
@@ -18,7 +18,7 @@ class Board:
             x_val = self.border + i*self.square_size
             for j in range(8):
                 y_val = self.border + j*self.square_size
-                pygame.draw.rect(window, color, (x_val, y_val, 85, 85))
+                pygame.draw.rect(window, color, (x_val, y_val, self.square_size, self.square_size))
                 if j == 7:
                     break
                 elif color == self.white_sq_color:
@@ -26,17 +26,13 @@ class Board:
                 else:
                     color = self.white_sq_color
 
-    def draw_pawn(self, window, x, y):
-        x_loc = x*85 + 33
-        y_loc = y*85 + 33
-        location = (x_loc, y_loc)
-        rectangle = pygame.Rect(0,64,64,64)
-        window.blit(self.pieces, location, rectangle)
-    
-    def draw_bishop(self, window, x, y):
-        x_loc = x*85 + 33
-        y_loc = y*85 + 33
-        location = (x_loc, y_loc)
-        rectangle = pygame.Rect(128,0,64,64)
-        window.blit(self.pieces, location, rectangle)
-    
+    def draw_moves(self, window, moves):
+        for move in moves:
+            x_val = self.border + move[0]*self.square_size
+            y_val = self.border + move[1]*self.square_size
+            pygame.draw.rect(window, 'red', (x_val, y_val, self.square_size, self.square_size))
+
+    def update_pieces(self, piece, move):
+        self.pieces[piece.y][piece.x] = None
+        self.pieces[move[1]][move[0]] = piece
+        piece.update(move, self.square_size)
