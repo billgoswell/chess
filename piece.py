@@ -28,4 +28,94 @@ class Piece(pygame.sprite.Sprite):
         self.rect = pygame.Rect(self.xpos, self.ypos, size, size)
     
     def possible_moves(self, board):
-        pass
+        return []
+
+    def diag_moves(self, board):
+        moves = []
+        if self.x >= self.y:
+            l = self.x
+            s = self.y
+        else:
+            l = self.y
+            s = self.x
+        for i in range(1,8-l):
+            if board[self.y+i][self.x+i] == None:
+                moves.append((self.x+i, self.y+i))
+            elif board[self.y+i][self.x+i].color != self.color:
+                moves.append((self.x+i, self.y+i))
+                break
+            else:
+                break
+        for i in range(1, s+1):
+            if board[self.y-i][self.x-i] == None:
+                moves.append((self.x-i, self.y-i))
+            elif board[self.y-i][self.x-i].color != self.color:
+                moves.append((self.x-i, self.y-i))
+                break
+            else:
+                break
+        for i in range(1, 8):
+            if self.y-i < 0:
+                break
+            if self.x+i > 7:
+                break
+            if board[self.y-i][self.x+i] == None:
+                moves.append((self.x+i, self.y-i))
+            elif board[self.y-i][self.x+i].color != self.color:
+                moves.append((self.x+i, self.y-i))
+                break
+            else:
+                break
+        for i in range(1, 8):
+            if self.x-i < 0:
+                break
+            if self.y+i > 7:
+                break
+            if board[self.y+i][self.x-i] == None:
+                moves.append((self.x-i, self.y+i))
+            elif board[self.y+i][self.x-i].color != self.color:
+                moves.append((self.x-i, self.y+i))
+                break
+            else:
+                break
+        return moves
+
+    def horz_moves(self, board): 
+        moves = []
+        for i in range(self.x+1, 8):
+            if board[self.y][i] == None:
+                moves.append((i, self.y))
+            elif board[self.y][i].color != self.color:
+                moves.append((i, self.y))
+                break
+            else:
+                break
+        
+        for i in range(self.x-1, -1, -1):
+            if board[self.y][i] == None:
+                moves.append((i, self.y))
+            elif board[self.y][i].color != self.color:
+                moves.append((i, self.y))
+                break
+            else:
+                break
+
+        for i in range(self.y+1, 8):
+            if board[i][self.x] == None:
+                moves.append((self.x, i))
+            elif board[i][self.x].color != self.color:
+                moves.append((self.x, i))
+                break
+            else:
+                break
+       
+        for i in range(self.y-1, -1, -1):
+            if board[i][self.x] == None:
+                moves.append((self.x, i))
+            elif board[i][self.x].color  != self.color:
+                moves.append((self.x, i))
+                break
+            else:
+                break
+                    
+        return moves
