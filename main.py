@@ -34,6 +34,8 @@ def main():
                 pieces = black_pieces
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pos = pygame.mouse.get_pos()
+                moves = []
+                current_piece = None
                 for piece in pieces:
                     if piece.rect.collidepoint(pos):
                         moves = piece.possible_moves(board.pieces)

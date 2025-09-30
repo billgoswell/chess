@@ -33,6 +33,10 @@ class Board:
             pygame.draw.rect(window, 'red', (x_val, y_val, self.square_size, self.square_size))
 
     def update_pieces(self, piece, move):
+        if self.pieces[move[1]][move[0]] != None:
+            captured_piece = self.pieces[move[1]][move[0]]
+            captured_piece.kill()
         self.pieces[piece.y][piece.x] = None
         self.pieces[move[1]][move[0]] = piece
         piece.update(move, self.square_size)
+

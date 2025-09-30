@@ -17,6 +17,14 @@ class Pawn(Piece):
             else:
                 if board[self.y-1][self.x] == None:
                     moves.append((self.x, self.y-1))
+
+            if self.x < 7:
+                if board[self.y-1][self.x+1] != None and board[self.y-1][self.x+1].color == 'black':
+                    moves.append((self.x+1, self.y-1))
+                
+            if self.x > 0:
+                if board[self.y-1][self.x-1] != None and board[self.y-1][self.x-1].color == 'black':
+                    moves.append((self.x-1, self.y-1))
         
         if self.color == "black":
             if self.y == 1:
@@ -27,5 +35,14 @@ class Pawn(Piece):
             else:
                 if board[self.y+1][self.x] == None:
                     moves.append((self.x, self.y+1))
+            if self.x < 7:
+                if board[self.y+1][self.x+1] != None and board[self.y+1][self.x+1].color == 'white':
+                    moves.append((self.x+1, self.y+1))
+                
+            if self.x > 0:
+                if board[self.y+1][self.x-1] != None and board[self.y+1][self.x-1].color == 'white':
+                    moves.append((self.x-1, self.y+1))
+
+
         return moves
 
