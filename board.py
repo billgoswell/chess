@@ -9,6 +9,7 @@ from knight import Knight
 
 class Board:
     def __init__(self, window, player_color, board_size):
+        self.board_size = board_size
         self.player_color = player_color
         self.white_sq_color = (255,255,255)
         self.black_sq_color = (125,215,100)
@@ -53,7 +54,9 @@ class Board:
         for move in moves:
             x_val = self.border + move[0]*self.square_size
             y_val = self.border + move[1]*self.square_size
-            pygame.draw.rect(self.window, 'red', (x_val, y_val, self.square_size, self.square_size))
+            alpha_surface = pygame.Surface((self.board_size, self.board_size), pygame.SRCALPHA)
+            pygame.draw.rect(alpha_surface, (0,0,0,128), (x_val, y_val, self.square_size, self.square_size))
+            self.window.blit(alpha_surface, (0, 0))
 
     def update_pieces(self, piece, move):
         if self.pieces[move[1]][move[0]] != None:
