@@ -10,6 +10,8 @@ class Piece(pygame.sprite.Sprite):
         self.ypos = size*y+20
         self.color = color
         self.rect = pygame.Rect(self.xpos, self.ypos, size, size)
+        self.moves = []
+        self.captured = False
 
     def get_img(self, size, img_loc):
         if self.color == "white":
@@ -79,6 +81,8 @@ class Piece(pygame.sprite.Sprite):
             else:
                 break
         return moves
+
+    
 
     def horz_moves(self, board): 
         moves = []

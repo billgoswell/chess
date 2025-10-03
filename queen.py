@@ -7,6 +7,6 @@ class Queen(Piece):
         self.image = self.get_img(size, 1)
 
     def possible_moves(self, board):
-        moves = self.diag_moves(board)
-        moves.extend(self.horz_moves(board))
-        return moves
+        self.moves = self.diag_moves(board)
+        self.moves.extend(self.horz_moves(board))
+        return self.moves

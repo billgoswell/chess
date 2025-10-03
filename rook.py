@@ -8,4 +8,5 @@ class Rook(Piece):
 
 
     def possible_moves(self, board):
-        return self.horz_moves(board)
+        self.moves = self.horz_moves(board)
+        return self.moves

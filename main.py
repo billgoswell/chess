@@ -3,7 +3,7 @@ from board import Board
 
 def main():
     pygame.init()
-    window_size = 1400
+    window_size = 700 
     window = pygame.display.set_mode((window_size,window_size))
     window.fill('grey')
     board = Board(window, "white", window_size)

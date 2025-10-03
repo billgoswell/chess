@@ -22,15 +22,57 @@ class Board:
         self.window = window
         self.current_piece = None
         self.moves = []
+        self.move_history = []
+        self.black_king = None
+        self.white_king = None
+        self.all_blackmoves = []
+        self.all_whitemoves = []
 
-    def check_check(self, move=None):
-        check = False
-        possible_moves = []
-        if move != None:
-            pass
-        return check
+    def black_moves(self):
+        self.all_blackmoves = []
+        for piece in self.black_pieces:
+            if piece.captured == False:
+                moves = piece.possible_moves(self.pieces)
+                self.all_blackmoves.extend(moves)
 
+    def white_moves(self):
+        self.all_whitemoves = []
+        for piece in self.white_pieces:
+            if piece.captured == False:
+                moves = piece.possible_moves(self.pieces)
+                self.all_whitemoves.extend(moves)
 
+    def verify_move(self, move, piece):
+        good = True
+        x = piece.x
+        y = piece.y
+        captured_piece = None
+        if self.pieces[move[1]][move[0]] != None:
+            captured_piece = self.pieces[move[1]][move[0]]
+            captured_piece.captured = True
+        self.pieces[y][x] = None
+        self.pieces[move[1]][move[0]] = piece
+        if piece.color  == "white":
+            king_loc = (self.white_king.x, self.white_king.y)
+            self.black_moves()
+            enemy_moves = self.all_blackmoves
+        else:
+            king_loc = (self.black_king.x, self.black_king.y)
+            self.white_moves()
+            enemy_moves = self.all_whitemoves
+        if isinstance(piece, King):
+            king_loc = move
+
+        for m in enemy_moves:
+            if m == king_loc:
+                good = False
+                break
+        if captured_piece != None:
+            captured_piece.captured = False
+        self.pieces[move[1]][move[0]] = captured_piece
+        self.pieces[y][x] = piece
+        return good
+        
     def draw(self):
         if self.player_color == "white":
             color = self.white_sq_color
@@ -48,10 +90,13 @@ class Board:
                 else:
                     color = self.white_sq_color
         self.black_pieces.draw(self.window)
+
         self.white_pieces.draw(self.window)
 
-    def draw_moves(self, moves):
-        for move in moves:
+    def draw_moves(self, piece):
+        if piece == None:
+            return
+        for move in piece.moves:
             x_val = self.border + move[0]*self.square_size
             y_val = self.border + move[1]*self.square_size
             alpha_surface = pygame.Surface((self.board_size, self.board_size), pygame.SRCALPHA)
@@ -72,40 +117,70 @@ class Board:
         else:
             pieces = self.black_pieces
         pos = pygame.mouse.get_pos()
-        self.moves = []
         self.current_piece = None
         for piece in pieces:
             if piece.rect.collidepoint(pos):
-                self.moves = piece.possible_moves(self.pieces)
                 self.current_piece = piece
         self.draw()
-        if len(self.moves) > 0:
-            self.draw_moves(self.moves)
+        self.draw_moves(self.current_piece)
 
     def make_move(self):
         pos = pygame.mouse.get_pos()
-        for move in self.moves:
+        print(self.current_piece)
+        if self.current_piece == None:
+            return
+        for move in self.current_piece.moves:
             x_pos = move[0]*self.square_size+20
             y_pos = move[1]*self.square_size+20
             sq = pygame.Rect(x_pos, y_pos, self.square_size, self.square_size)
             if sq.collidepoint(pos):
-                if not self.check_check(move):
-                    self.update_pieces(self.current_piece, move)
-                    if self.turn == "white":
-                        self.turn = "black"
-                    else:
-                        self.turn = "white"
+                self.update_pieces(self.current_piece, move)
+                self.move_history.append(move)
+                self.switch_turn()
+#                if self.turn == "white":
+#                    self.turn = "black"
+#                else:
+#                    self.turn = "white"
+#                self.white_moves()
+#                self.black_moves()
         self.moves = []
         self.current_piece = None
         self.draw()
 
+    def switch_turn(self):
+        if self.turn == "white":
+            self.turn = "black"
+            for piece in self.black_pieces:
+                verified_moves = []
+                moves = piece.possible_moves(self.pieces)
+                for move in moves:
+                    if self.verify_move(move, piece):
+                        verified_moves.append(move)
+                piece.moves = verified_moves
+                self.all_blackmoves.extend(verified_moves)
+        else:
+            self.turn = "white"
+            for piece in self.white_pieces:
+                verified_moves = []
+                moves = piece.possible_moves(self.pieces)
+                for move in moves:
+                    if self.verify_move(move, piece):
+                        verified_moves.append(move)
+                piece.moves = verified_moves
+                self.all_whitemoves.extend(verified_moves)
+
+
     def new_game(self):
+        self.move_history = []
+        self.pieces = [[None]*8 for i in range(8)]
         for i in range(8):
             self.pieces[6][i] = Pawn("white", i, 6, self.square_size)
             self.pieces[1][i] = Pawn("black", i, 1, self.square_size)
         
         self.pieces[0][4] = King("black", 4, 0, self.square_size)
         self.pieces[7][4] = King("white", 4, 7, self.square_size)
+        self.white_king = self.pieces[7][4]
+        self.black_king = self.pieces[0][4]
 
         self.pieces[0][3] = Queen("black", 3, 0, self.square_size)
         self.pieces[7][3] = Queen("white", 3, 7, self.square_size)
@@ -132,4 +207,7 @@ class Board:
                         self.black_pieces.add(self.pieces[i][j])
                     else:
                         self.white_pieces.add(self.pieces[i][j])
+
+        self.black_moves()
+        self.white_moves()
 

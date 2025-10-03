@@ -8,4 +8,5 @@ class Bishop(Piece):
 
     
     def possible_moves(self, board):
-        return self.diag_moves(board)
+        self.moves = self.diag_moves(board)
+        return self.moves
