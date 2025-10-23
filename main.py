@@ -13,25 +13,30 @@ def main():
     print(game_state.board)
     redraw = True
     moves = []
-
     while running:
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 loc = get_loc(pygame.mouse.get_pos(), sq_size)
-                moves = game_state.get_move(loc)
+                moves = game_state.handle_click(loc)
                 redraw = True
             if event.type == pygame.MOUSEBUTTONUP:
                 loc = get_loc(pygame.mouse.get_pos(), sq_size)
-                game_state.make_move(loc, moves)
+                game_state.click_move(loc, moves)
                 moves = []
                 redraw = True
             if event.type == pygame.QUIT:
                 running = False
                 break
+        if not game_state.white_turn:
+            game_state.bot_move()
+            redraw = True
         if redraw:
             drawGame(window, sq_size, images, game_state, moves)
-            pygame.display.update()
+            pygame.display.flip()
             redraw = False
+        if game_state.checkmate:
+            draw_checkmate(window)
+            pygame.display.flip()   
 
 def loadImages(sq_size):
     pieces = ["wp", "wR", "wN", "wB", "wK", "wQ", "bp", "bR", "bN", "bB", "bK", "bQ"]
@@ -66,6 +71,10 @@ def drawMoves(window, sq_size, moves):
         row, col = get_row_col(move[2])
         pygame.draw.rect(alpha_surface, (0,0,0,128), (col*sq_size, row*sq_size, sq_size, sq_size))
     window.blit(alpha_surface, (0,0))
+
+def draw_checkmate(window):
+    font = pygame.font.SysFont("Arial", 50)
+    window.blit(font.render("Checkmate", True, "red"), (200, 200))
 
 def get_row_col(loc):
     return loc//8, loc%8

@@ -1,3 +1,5 @@
+import random
+
 class GameState():
     def __init__(self):
         self.board = ["bR", "bN", "bB", "bK", "bQ", "bB", "bN", "bR",
@@ -21,49 +23,125 @@ class GameState():
         self.white_turn = True
         self.move_history = []
         self.captured_pieces = []
+        self.white_king = 59 
+        self.black_king = 3
+        self.moves = []
+        self.checkmate = False
         
-    def make_move(self, loc, moves):
+    def verify_moves(self, moves):
+        verified_moves = []
+        if len(moves) == 0:
+            return []
+        for move in moves:
+            if self.verify_move(move):
+                verified_moves.append(move)
+        return verified_moves
+
+    def verify_move(self, move):
+        legal = True
+        self.make_move(move)
+        if self.white_turn:
+            enemy_moves = self.get_black_moves()
+            king_loc = self.white_king
+        else:
+            enemy_moves = self.get_white_moves()
+            king_loc = self.black_king
+        for m in enemy_moves:
+            if m[2] == king_loc:
+                legal = False
+                break
+        self.undo_move(move)
+        return legal
+
+    def get_white_moves(self):
+        all_white_moves = []
+        for i in range(64):
+            if self.board[i][0] == "w":
+                all_white_moves.extend(self.get_moves(self.board[i], i))
+        return all_white_moves
+
+    def get_black_moves(self):
+        all_black_moves = []
+        for i in range(64):
+            if self.board[i][0] == "b":
+                all_black_moves.extend(self.get_moves(self.board[i], i))
+        return all_black_moves
+
+    def click_move(self, loc, moves):
         for move in moves:
             if move[2] == loc:
-                if move[3] == "c":
-                    self.captured_pieces.append(self.board[move[2]])
-                if move[3] == "e":
-                    if self.white_turn:
-                        self.captured_pieces.append(self.board[loc+8])
-                        self.board[loc+8] = "  "
-                    else:
-                        self.captured_pieces.append(self.board[loc-8])
-                        self.board[loc-8] = "  "
-                self.board[move[2]] = move[0]
-                self.board[move[1]] = "  "
-                self.white_turn = not self.white_turn
+                self.make_move(move)
                 self.move_history.append(move)
-                return
+                self.switch_turn()
+                
+    def make_move(self, move):
+            if move[3] == "c":
+                self.captured_pieces.append(self.board[move[2]])
+            if move[3] == "e":
+                if self.white_turn:
+                    self.captured_pieces.append(self.board[move[2]+8])
+                    self.board[move[2]+8] = "  "
+                else:
+                    self.captured_pieces.append(self.board[move[2]-8])
+                    self.board[move[2]-8] = "  "
+            if move[0][1] == "K":
+                if move[0][0] == "w":
+                    self.white_king = move[2]
+                else:
+                    self.black_king = move[2]
+            self.board[move[2]] = move[0]
+            self.board[move[1]] = "  "
 
-    def get_move(self, loc):
+    def undo_move(self, move):
+        self.board[move[1]] = move[0]
+        self.board[move[2]] = "  "
+        if move[0][1] == "K":
+            if move[0][0] == "w":
+                self.white_king = move[1]
+            else:
+                self.black_king = move[1]
+        if move[3] == "c":
+            self.board[move[2]] = self.captured_pieces.pop()
+        if move[3] == "e":
+            if move[0] == "wp":
+                self.board[move[2]+8] = self.captured_pieces.pop()
+            if move[0] == "bp":
+                self.board[move[2]-8] = self.captured_pieces.pop()
+
+    def handle_click(self, loc):
         piece = self.board[loc]
         if (piece[0] == "b") and self.white_turn:
-            return []
+            return [] 
         if (piece[0] == "w") and not self.white_turn: 
             return []
+        moves = self.get_moves(piece, loc)
+        verified_moves = self.verify_moves(moves)
+        return verified_moves
+
+        
+    def get_moves(self, piece, loc):
+        moves = [] 
         match piece[1]:
             case " ":
-                return []
+                return [] 
             case "p":
                 if piece[0] == "w":
-                    return self.wp_moves(piece, loc)
+                    moves =  self.wp_moves(piece, loc)
                 else:
-                    return self.bp_moves(piece, loc)
+                    moves = self.bp_moves(piece, loc)
             case "R":
-                return self.rook_moves(piece, loc)
+                moves = self.rook_moves(piece, loc)
             case "B":
-                return self.bishop_moves(piece, loc)
+                moves = self.bishop_moves(piece, loc)
             case "Q":
-                return self.queen_moves(piece, loc)
+                moves =  self.queen_moves(piece, loc)
             case "K":
-                return self.king_moves(piece, loc)
+                moves = self.king_moves(piece, loc)
             case "N":
-                return self.knight_moves(piece, loc)
+                moves = self.knight_moves(piece, loc)
+        #if len(moves) == 0:
+        #    return []
+        return moves
 
     def move(self, piece, loc1, loc2, moves):
         b = False
@@ -71,6 +149,7 @@ class GameState():
             moves.append((piece, loc1, loc2, "m"))
         elif self.board[loc2][0] != piece[0]:
             moves.append((piece, loc1, loc2, "c"))
+            b = True
         else:
             b = True
         return moves, b
@@ -177,7 +256,7 @@ class GameState():
         row = loc//8
         col = loc%8
         if row == 1:
-            pass
+            return self.check_promo(piece, loc)
         if self.board[loc-8] == "  ":
             moves.append((piece, loc, loc-8, "m"))
             if row == 6:
@@ -204,7 +283,7 @@ class GameState():
         row = loc//8
         col = loc%8
         if row == 6:
-            pass
+            return self.check_promo(piece, loc)
         if self.board[loc+8] == "  ":
             moves.append((piece, loc, loc+8, "m"))
             if row == 1:
@@ -224,4 +303,37 @@ class GameState():
                 if loc-1 == l:
                     moves.append((piece, loc, loc+7, "e"))
         return moves
+
+    def check_promo(self, piece, loc):
+        pass    
+    
+    def bot_move(self):
+        if len(self.moves) == 0:
+            return
+        self.easy_bot()
+
+    def easy_bot(self):
+        captures = []
+        for move in self.moves:
+            if move[3] == "c":
+                captures.append(move)
+        if len(captures) != 0:
+            self.rand_move(captures)
+        else:
+            self.rand_move(self.moves)
+
+    def rand_move(self, moves):
+        move = random.choice(moves)
+        self.make_move(move)
+        self.switch_turn()
+
+    def switch_turn(self):
+        self.white_turn = not self.white_turn
+        if self.white_turn:
+            moves = self.get_white_moves()
+        else:
+            moves = self.get_black_moves()
+        self.moves = self.verify_moves(moves)
+        if len(self.moves) == 0:
+            self.checkmate = True
 
