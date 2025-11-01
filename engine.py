@@ -139,8 +139,6 @@ class GameState():
                 moves = self.king_moves(piece, loc)
             case "N":
                 moves = self.knight_moves(piece, loc)
-        #if len(moves) == 0:
-        #    return []
         return moves
 
     def move(self, piece, loc1, loc2, moves):
