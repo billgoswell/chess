@@ -68,7 +68,7 @@ def drawPieces(window, sq_size, image, game_state):
 def drawMoves(window, sq_size, moves):
     alpha_surface = pygame.Surface(window.get_size(), pygame.SRCALPHA) 
     for move in moves:
-        row, col = get_row_col(move[2])
+        row, col = get_row_col(move.to_idx)
         pygame.draw.rect(alpha_surface, (0,0,0,128), (col*sq_size, row*sq_size, sq_size, sq_size))
     window.blit(alpha_surface, (0,0))
 
