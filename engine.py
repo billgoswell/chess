@@ -27,6 +27,7 @@ class Move:
     to_idx: int
     move_type: MoveType
     captured: str | None  = None
+    promotion_piece: str | None = None
 
 class GameState():
     def __init__(self):
@@ -119,6 +120,11 @@ class GameState():
                     self.black_king = move.to_idx
             self.board[move.to_idx] = move.piece
             self.board[move.from_idx] = "  "
+            if move.move_type == MoveType.PROMOTION:
+                if move.piece[0] == WHITE:
+                    self.board[move.to_idx] = "wQ"
+                if move.piece[0] == BLACK:
+                    self.board[move.to_idx] = "bQ"
 
     def undo_move(self, move: Move):
         self.board[move.from_idx] = move.piece
@@ -153,7 +159,7 @@ class GameState():
             case " ":
                 return [] 
             case Pieces.PAWN:
-                if piece[0] == "w":
+                if piece[0] == WHITE:
                     moves =  self.wp_moves(piece, loc)
                 else:
                     moves = self.bp_moves(piece, loc)
@@ -174,7 +180,7 @@ class GameState():
         if self.board[loc2] == "  ":
             moves.append(Move(piece, loc1, loc2, MoveType.MOVE))
         elif self.board[loc2][0] != piece[0]:
-            moves.append(Move(piece, loc1, loc2, MoveType.CAPTURE))
+            moves.append(Move(piece, loc1, loc2, MoveType.CAPTURE, self.board[loc2]))
             b = True
         else:
             b = True
@@ -182,8 +188,7 @@ class GameState():
 
     def knight_moves(self, piece: str, loc: int) -> list[Move]:
         moves = []
-        row = loc//8
-        col = loc%8
+        row, col = idx_to_row_col(loc)
         if row+2 <= 7:
             if col+1 <= 7:
                 moves, _ = self.move(piece, loc, loc+17, moves)
@@ -208,8 +213,7 @@ class GameState():
 
     def rook_moves(self, piece: str, loc: int) -> list[Move]:
         moves = []
-        row = loc//8
-        col = loc%8
+        row, col = idx_to_row_col(loc)
         for i in range(1, 8-col):
             moves, b = self.move(piece, loc, loc+i, moves)
             if b:
@@ -230,8 +234,7 @@ class GameState():
 
     def bishop_moves(self, piece: str, loc: int) -> list[Move]:
         moves = []
-        row = loc//8
-        col = loc%8
+        row, col = idx_to_row_col(loc)
         for i in range(1, 8-max(row,col)):
             moves, b = self.move(piece, loc, loc+i*9, moves)
             if b:
@@ -257,8 +260,7 @@ class GameState():
 
     def king_moves(self, piece: str, loc: int) -> list[Move]:
         moves = []
-        row = loc//8
-        col = loc%8
+        row, col = idx_to_row_col(loc)
         if row-1 >= 0:
             moves, _ = self.move(piece, loc, loc-8, moves)
             if col-1 >= 0:
@@ -279,21 +281,27 @@ class GameState():
 
     def wp_moves(self, piece, loc):
         moves = []
-        row = loc//8
-        col = loc%8
-        if row == 1:
-            return self.check_promo(piece, loc)
+        row, col = idx_to_row_col(loc)
         if self.board[loc-8] == "  ":
-            moves.append(Move(piece, loc, loc-8, MoveType.MOVE))
-            if row == 6:
-                if self.board[loc-16] == "  ":
-                    moves.append(Move(piece, loc, loc-16, MoveType.DOUBLE))
+            if row == 1:
+                moves.extend(self.get_promo_moves(piece, loc, loc-8))
+            else:
+                moves.append(Move(piece, loc, loc-8, MoveType.MOVE))
+                if row == 6:
+                    if self.board[loc-16] == "  ":
+                        moves.append(Move(piece, loc, loc-16, MoveType.DOUBLE))
         if col < 7:
-            if self.board[loc-7][0] == "b":
-                moves.append(Move(piece, loc, loc-7, MoveType.CAPTURE))
+            if self.board[loc-7][0] == BLACK:
+                if row == 1:
+                    moves.extend(self.get_promo_moves(piece, loc, loc-7, self.board[loc-7]))
+                else:
+                    moves.append(Move(piece, loc, loc-7, MoveType.CAPTURE, self.board[loc-7]))
         if col > 0:
-            if self.board[loc-9][0] == "b":
-                moves.append(Move(piece, loc, loc-9, MoveType.CAPTURE))
+            if self.board[loc-9][0] == BLACK:
+                if row == 1:
+                    moves.extend(self.get_promo_moves(piece, loc, loc-9, self.board[loc-9]))
+                else:
+                    moves.append(Move(piece, loc, loc-9, MoveType.CAPTURE, self.board[loc-9]))
         if row == 3:
             if self.move_history[-1].move_type == MoveType.DOUBLE:
                 l = self.move_history[-1].to_idx
@@ -306,21 +314,27 @@ class GameState():
                         
     def bp_moves(self, piece: str, loc: int) -> list[Move]:
         moves = []
-        row = loc//8
-        col = loc%8
-        if row == 6:
-            return self.check_promo(piece, loc)
+        row, col = idx_to_row_col(loc)
         if self.board[loc+8] == "  ":
-            moves.append(Move(piece, loc, loc+8, MoveType.MOVE))
-            if row == 1:
-                if self.board[loc+16] == "  ":
-                    moves.append(Move(piece, loc, loc+16, MoveType.DOUBLE))
+            if row == 6:
+                moves.extend(self.get_promo_moves(piece, loc, loc+8))
+            else:
+                moves.append(Move(piece, loc, loc+8, MoveType.MOVE))
+                if row == 1:
+                    if self.board[loc+16] == "  ":
+                        moves.append(Move(piece, loc, loc+16, MoveType.DOUBLE))
         if col < 7:
-            if self.board[loc+9][0] == "w":
-                moves.append(Move(piece, loc, loc+9, MoveType.CAPTURE))
+            if self.board[loc+9][0] == WHITE:
+                if row == 6:
+                    moves.extend(self.get_promo_moves(piece, loc, loc+9, self.board[loc+9]))
+                else:
+                    moves.append(Move(piece, loc, loc+9, MoveType.CAPTURE, self.board[loc+9]))
         if col > 0:
-            if self.board[loc+7][0] == "w":
-                moves.append(Move(piece, loc, loc+7, MoveType.CAPTURE))
+            if self.board[loc+7][0] == WHITE:
+                if row == 6:
+                    moves.extend(self.get_promo_moves(piece, loc, loc+7, self.board[loc+7]))
+                else:
+                    moves.append(Move(piece, loc, loc+7, MoveType.CAPTURE, self.board[loc+7]))
         if row == 4:
             if self.move_history[-1].move_type == MoveType.DOUBLE:
                 l = self.move_history[-1].to_idx
@@ -330,8 +344,15 @@ class GameState():
                     moves.append(Move(piece, loc, loc+7, MoveType.EN_PASSANT))
         return moves
 
-    def check_promo(self, piece: str, loc: int) -> Move:
-        pass
+    def get_promo_moves(self, piece: str, loc: int, to_loc: int, captured: str | None = None) -> list[Move]:
+        moves = []
+        if piece[0] == WHITE:
+            for p in ["wQ", "wR", "wB", "wN"]:
+                moves.append(Move(piece, loc, to_loc, MoveType.PROMOTION, captured, p))
+        else:
+            for p in ["bQ", "bR", "bB", "bN"]:
+                moves.append(Move(piece, loc, to_loc, MoveType.PROMOTION, captured, p))
+        return moves
     
     def bot_move(self):
         if len(self.moves) == 0:
@@ -362,4 +383,7 @@ class GameState():
         self.moves = self.verify_moves(moves)
         if len(self.moves) == 0:
             self.checkmate = True
+
+def idx_to_row_col(idx: int) -> tuple[int, int]:
+    return idx // 8, idx % 8
 
