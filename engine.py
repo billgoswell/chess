@@ -37,7 +37,7 @@ class GameState():
         self.moves = []
         self.checkmate = False
         
-    def verify_moves(self, moves):
+    def verify_moves(self, moves: list[Move]) -> list[Move]:
         verified_moves = []
         if len(moves) == 0:
             return []
@@ -46,7 +46,7 @@ class GameState():
                 verified_moves.append(move)
         return verified_moves
 
-    def verify_move(self, move):
+    def verify_move(self, move: Move) -> bool:
         legal = True
         self.make_move(move)
         if self.white_turn:
@@ -62,28 +62,28 @@ class GameState():
         self.undo_move(move)
         return legal
 
-    def get_white_moves(self):
+    def get_white_moves(self) -> list[Move]:
         all_white_moves = []
         for i in range(64):
             if self.board[i][0] == "w":
                 all_white_moves.extend(self.get_moves(self.board[i], i))
         return all_white_moves
 
-    def get_black_moves(self):
+    def get_black_moves(self) -> list[Move]:
         all_black_moves = []
         for i in range(64):
             if self.board[i][0] == "b":
                 all_black_moves.extend(self.get_moves(self.board[i], i))
         return all_black_moves
 
-    def click_move(self, loc, moves):
+    def click_move(self, loc: int, moves: list[Move]):
         for move in moves:
             if move.to_idx == loc:
                 self.make_move(move)
                 self.move_history.append(move)
                 self.switch_turn()
                 
-    def make_move(self, move):
+    def make_move(self, move: Move):
             if move.move_type == "c":
                 self.captured_pieces.append(self.board[move.to_idx])
             if move.move_type == "e":
@@ -101,7 +101,7 @@ class GameState():
             self.board[move.to_idx] = move.piece
             self.board[move.from_idx] = "  "
 
-    def undo_move(self, move):
+    def undo_move(self, move: Move):
         self.board[move.from_idx] = move.piece
         self.board[move.to_idx] = "  "
         if move.piece[1] == "K":
@@ -117,7 +117,7 @@ class GameState():
             if move.piece == "bp":
                 self.board[move.to_idx-8] = self.captured_pieces.pop()
 
-    def handle_click(self, loc):
+    def handle_click(self, loc: int) -> list[Move]:
         piece = self.board[loc]
         if (piece[0] == "b") and self.white_turn:
             return [] 
@@ -128,7 +128,7 @@ class GameState():
         return verified_moves
 
         
-    def get_moves(self, piece, loc):
+    def get_moves(self, piece: str, loc: int) -> list[Move]:
         moves = [] 
         match piece[1]:
             case " ":
@@ -150,7 +150,7 @@ class GameState():
                 moves = self.knight_moves(piece, loc)
         return moves
 
-    def move(self, piece, loc1, loc2, moves):
+    def move(self, piece: str, loc1: int, loc2: int, moves: list[Move]) -> tuple[list[Move], bool]:
         b = False
         if self.board[loc2] == "  ":
             moves.append(Move(piece, loc1, loc2, "m"))
@@ -161,7 +161,7 @@ class GameState():
             b = True
         return moves, b
 
-    def knight_moves(self, piece, loc):
+    def knight_moves(self, piece: str, loc: int) -> list[Move]:
         moves = []
         row = loc//8
         col = loc%8
@@ -187,7 +187,7 @@ class GameState():
                 moves, _ = self.move(piece, loc, loc-10, moves)
         return moves
 
-    def rook_moves(self, piece, loc):
+    def rook_moves(self, piece: str, loc: int) -> list[Move]:
         moves = []
         row = loc//8
         col = loc%8
@@ -209,7 +209,7 @@ class GameState():
                 break
         return moves
 
-    def bishop_moves(self, piece, loc):
+    def bishop_moves(self, piece: str, loc: int) -> list[Move]:
         moves = []
         row = loc//8
         col = loc%8
@@ -231,12 +231,12 @@ class GameState():
                 break
         return moves
 
-    def queen_moves(self, piece, loc):
+    def queen_moves(self, piece: str, loc: int) -> list[Move]:
         moves = self.bishop_moves(piece, loc)
         moves.extend(self.rook_moves(piece, loc))
         return moves
 
-    def king_moves(self, piece, loc):
+    def king_moves(self, piece: str, loc: int) -> list[Move]:
         moves = []
         row = loc//8
         col = loc%8
@@ -285,7 +285,7 @@ class GameState():
         return moves
         
                         
-    def bp_moves(self, piece, loc):
+    def bp_moves(self, piece: str, loc: int) -> list[Move]:
         moves = []
         row = loc//8
         col = loc%8
@@ -311,8 +311,8 @@ class GameState():
                     moves.append(Move(piece, loc, loc+7, "e"))
         return moves
 
-    def check_promo(self, piece, loc):
-        pass    
+    def check_promo(self, piece: str, loc: int) -> bool:
+        return False    
     
     def bot_move(self):
         if len(self.moves) == 0:
@@ -329,7 +329,7 @@ class GameState():
         else:
             self.rand_move(self.moves)
 
-    def rand_move(self, moves):
+    def rand_move(self, moves: list[Move]):
         move = random.choice(moves)
         self.make_move(move)
         self.switch_turn()

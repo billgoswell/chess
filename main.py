@@ -38,26 +38,26 @@ def main():
             draw_checkmate(window)
             pygame.display.flip()   
 
-def loadImages(sq_size):
+def loadImages(sq_size: int) -> dict[str, pygame.Surface]:
     pieces = ["wp", "wR", "wN", "wB", "wK", "wQ", "bp", "bR", "bN", "bB", "bK", "bQ"]
     images = {}
     for piece in pieces:
         images[piece] = pygame.transform.scale(pygame.image.load("assets/" + piece + ".png"), (sq_size, sq_size))
     return images
 
-def drawGame(window, sq_size, images, game_state, moves):
+def drawGame(window: pygame.Surface, sq_size: int, images, game_state: GameState, moves):
     drawBoard(window, sq_size)
     drawMoves(window, sq_size, moves)
     drawPieces(window, sq_size, images, game_state)
 
-def drawBoard(window, sq_size):
+def drawBoard(window: pygame.Surface, sq_size: int):
     colors = [(255,255,255), (125,215,100)] 
     for i in range(64):
         row = i // 8
         col = i % 8
         pygame.draw.rect(window, colors[(row+col)%2], (col*sq_size, row*sq_size, sq_size, sq_size)) 
 
-def drawPieces(window, sq_size, image, game_state):
+def drawPieces(window: pygame.Surface, sq_size: int, image, game_state: GameState):
     for i in range(64):
         row = i // 8
         col = i % 8
@@ -65,21 +65,21 @@ def drawPieces(window, sq_size, image, game_state):
         if current != "  ":
             window.blit(image[current], (col*sq_size, row*sq_size))
 
-def drawMoves(window, sq_size, moves):
+def drawMoves(window: pygame.Surface, sq_size: int, moves):
     alpha_surface = pygame.Surface(window.get_size(), pygame.SRCALPHA) 
     for move in moves:
         row, col = get_row_col(move.to_idx)
         pygame.draw.rect(alpha_surface, (0,0,0,128), (col*sq_size, row*sq_size, sq_size, sq_size))
     window.blit(alpha_surface, (0,0))
 
-def draw_checkmate(window):
+def draw_checkmate(window: pygame.Surface):
     font = pygame.font.SysFont("Arial", 50)
     window.blit(font.render("Checkmate", True, "red"), (200, 200))
 
-def get_row_col(loc):
+def get_row_col(loc: int) -> tuple[int, int]:
     return loc//8, loc%8
 
-def get_loc(pos, sq_size):
+def get_loc(pos: tuple[int, int], sq_size: int):
     row = pos[1]//sq_size
     col = pos[0]//sq_size
     return (row*8 + col)
