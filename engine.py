@@ -1,12 +1,31 @@
 import random
 from dataclasses import dataclass
+from enum import Enum
+
+WHITE = "w"
+BLACK = "b"
+
+class Pieces:
+    ROOK = "R"
+    KNIGHT = "N"
+    BISHOP = "B"
+    KING = "K"
+    QUEEN = "Q"
+    PAWN = "p"
+
+class MoveType(Enum):
+    MOVE = "move"
+    CAPTURE = "capture"
+    DOUBLE = "double"
+    EN_PASSANT = "en_passant"
+    PROMOTION = "promotion"
 
 @dataclass
 class Move:
     piece: str
     from_idx: int
     to_idx: int
-    move_type: str
+    move_type: MoveType
     captured: str | None  = None
 
 class GameState():
@@ -65,14 +84,14 @@ class GameState():
     def get_white_moves(self) -> list[Move]:
         all_white_moves = []
         for i in range(64):
-            if self.board[i][0] == "w":
+            if self.board[i][0] == WHITE:
                 all_white_moves.extend(self.get_moves(self.board[i], i))
         return all_white_moves
 
     def get_black_moves(self) -> list[Move]:
         all_black_moves = []
         for i in range(64):
-            if self.board[i][0] == "b":
+            if self.board[i][0] == BLACK:
                 all_black_moves.extend(self.get_moves(self.board[i], i))
         return all_black_moves
 
@@ -84,17 +103,17 @@ class GameState():
                 self.switch_turn()
                 
     def make_move(self, move: Move):
-            if move.move_type == "c":
+            if move.move_type == MoveType.CAPTURE:
                 self.captured_pieces.append(self.board[move.to_idx])
-            if move.move_type == "e":
+            if move.move_type == MoveType.EN_PASSANT:
                 if self.white_turn:
                     self.captured_pieces.append(self.board[move.to_idx+8])
                     self.board[move.to_idx+8] = "  "
                 else:
                     self.captured_pieces.append(self.board[move.to_idx-8])
                     self.board[move.to_idx-8] = "  "
-            if move.piece[1] == "K":
-                if move.piece[0] == "w":
+            if move.piece[1] == Pieces.KING:
+                if move.piece[0] == WHITE:
                     self.white_king = move.to_idx
                 else:
                     self.black_king = move.to_idx
@@ -104,14 +123,14 @@ class GameState():
     def undo_move(self, move: Move):
         self.board[move.from_idx] = move.piece
         self.board[move.to_idx] = "  "
-        if move.piece[1] == "K":
-            if move.piece[0] == "w":
+        if move.piece[1] == Pieces.KING:
+            if move.piece[0] == WHITE:
                 self.white_king = move.from_idx
             else:
                 self.black_king = move.from_idx
-        if move.move_type == "c":
+        if move.move_type == MoveType.CAPTURE:
             self.board[move.to_idx] = self.captured_pieces.pop()
-        if move.move_type == "e":
+        if move.move_type == MoveType.EN_PASSANT:
             if move.piece == "wp":
                 self.board[move.to_idx+8] = self.captured_pieces.pop()
             if move.piece == "bp":
@@ -119,9 +138,9 @@ class GameState():
 
     def handle_click(self, loc: int) -> list[Move]:
         piece = self.board[loc]
-        if (piece[0] == "b") and self.white_turn:
+        if (piece[0] == BLACK) and self.white_turn:
             return [] 
-        if (piece[0] == "w") and not self.white_turn: 
+        if (piece[0] == WHITE) and not self.white_turn: 
             return []
         moves = self.get_moves(piece, loc)
         verified_moves = self.verify_moves(moves)
@@ -133,29 +152,29 @@ class GameState():
         match piece[1]:
             case " ":
                 return [] 
-            case "p":
+            case Pieces.PAWN:
                 if piece[0] == "w":
                     moves =  self.wp_moves(piece, loc)
                 else:
                     moves = self.bp_moves(piece, loc)
-            case "R":
+            case Pieces.ROOK:
                 moves = self.rook_moves(piece, loc)
-            case "B":
+            case Pieces.BISHOP:
                 moves = self.bishop_moves(piece, loc)
-            case "Q":
+            case Pieces.QUEEN:
                 moves =  self.queen_moves(piece, loc)
-            case "K":
+            case Pieces.KING:
                 moves = self.king_moves(piece, loc)
-            case "N":
+            case Pieces.KNIGHT:
                 moves = self.knight_moves(piece, loc)
         return moves
 
     def move(self, piece: str, loc1: int, loc2: int, moves: list[Move]) -> tuple[list[Move], bool]:
         b = False
         if self.board[loc2] == "  ":
-            moves.append(Move(piece, loc1, loc2, "m"))
+            moves.append(Move(piece, loc1, loc2, MoveType.MOVE))
         elif self.board[loc2][0] != piece[0]:
-            moves.append(Move(piece, loc1, loc2, "c"))
+            moves.append(Move(piece, loc1, loc2, MoveType.CAPTURE))
             b = True
         else:
             b = True
@@ -265,23 +284,23 @@ class GameState():
         if row == 1:
             return self.check_promo(piece, loc)
         if self.board[loc-8] == "  ":
-            moves.append(Move(piece, loc, loc-8, "m"))
+            moves.append(Move(piece, loc, loc-8, MoveType.MOVE))
             if row == 6:
                 if self.board[loc-16] == "  ":
-                    moves.append(Move(piece, loc, loc-16, "d"))
+                    moves.append(Move(piece, loc, loc-16, MoveType.DOUBLE))
         if col < 7:
             if self.board[loc-7][0] == "b":
-                moves.append(Move(piece, loc, loc-7, "c"))
+                moves.append(Move(piece, loc, loc-7, MoveType.CAPTURE))
         if col > 0:
             if self.board[loc-9][0] == "b":
-                moves.append(Move(piece, loc, loc-9, "c"))
+                moves.append(Move(piece, loc, loc-9, MoveType.CAPTURE))
         if row == 3:
-            if self.move_history[-1].move_type == "d":
+            if self.move_history[-1].move_type == MoveType.DOUBLE:
                 l = self.move_history[-1].to_idx
                 if loc+1 == l:
-                    moves.append(Move(piece, loc, loc-7, "e"))
+                    moves.append(Move(piece, loc, loc-7, MoveType.EN_PASSANT))
                 if loc-1 == l:
-                    moves.append(Move(piece, loc, loc-9, "e"))
+                    moves.append(Move(piece, loc, loc-9, MoveType.EN_PASSANT))
         return moves
         
                         
@@ -292,27 +311,27 @@ class GameState():
         if row == 6:
             return self.check_promo(piece, loc)
         if self.board[loc+8] == "  ":
-            moves.append(Move(piece, loc, loc+8, "m"))
+            moves.append(Move(piece, loc, loc+8, MoveType.MOVE))
             if row == 1:
                 if self.board[loc+16] == "  ":
-                    moves.append(Move(piece, loc, loc+16, "d"))
+                    moves.append(Move(piece, loc, loc+16, MoveType.DOUBLE))
         if col < 7:
             if self.board[loc+9][0] == "w":
-                moves.append(Move(piece, loc, loc+9, "c"))
+                moves.append(Move(piece, loc, loc+9, MoveType.CAPTURE))
         if col > 0:
             if self.board[loc+7][0] == "w":
-                moves.append(Move(piece, loc, loc+7, "c"))
+                moves.append(Move(piece, loc, loc+7, MoveType.CAPTURE))
         if row == 4:
-            if self.move_history[-1].move_type == "d":
+            if self.move_history[-1].move_type == MoveType.DOUBLE:
                 l = self.move_history[-1].to_idx
                 if loc+1 == l:
-                    moves.append(Move(piece, loc, loc+9, "e"))
+                    moves.append(Move(piece, loc, loc+9, MoveType.EN_PASSANT))
                 if loc-1 == l:
-                    moves.append(Move(piece, loc, loc+7, "e"))
+                    moves.append(Move(piece, loc, loc+7, MoveType.EN_PASSANT))
         return moves
 
-    def check_promo(self, piece: str, loc: int) -> bool:
-        return False    
+    def check_promo(self, piece: str, loc: int) -> Move:
+        pass
     
     def bot_move(self):
         if len(self.moves) == 0:
@@ -322,7 +341,7 @@ class GameState():
     def easy_bot(self):
         captures = []
         for move in self.moves:
-            if move.move_type == "c":
+            if move.move_type == MoveType.CAPTURE:
                 captures.append(move)
         if len(captures) != 0:
             self.rand_move(captures)
