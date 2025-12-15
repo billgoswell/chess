@@ -19,6 +19,8 @@ class MoveType(Enum):
     DOUBLE = "double"
     EN_PASSANT = "en_passant"
     PROMOTION = "promotion"
+    CASTLE_KING = "castle_king"
+    CASTLE_QUEEN = "castle_queen"
 
 @dataclass
 class Move:
@@ -31,14 +33,14 @@ class Move:
 
 class GameState():
     def __init__(self):
-        self.board = ["bR", "bN", "bB", "bK", "bQ", "bB", "bN", "bR",
+        self.board = ["bR", "bN", "bB", "bQ", "bK", "bB", "bN", "bR",
                       "bp", "bp", "bp", "bp", "bp", "bp", "bp", "bp",
                       "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ",
                       "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ",
                       "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ",
                       "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ",
                       "wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp",
-                      "wR", "wN", "wB", "wK", "wQ", "wB", "wN", "wR"]
+                      "wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"]
 #        self.board = [
 #                      "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ",
 #                      "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ",
@@ -52,10 +54,16 @@ class GameState():
         self.white_turn = True
         self.move_history = []
         self.captured_pieces = []
-        self.white_king = 59 
-        self.black_king = 3
+        self.white_king = 60 
+        self.black_king = 4
         self.moves = []
         self.checkmate = False
+        self.white_king_moved = False
+        self.white_rook_kingside_moved = False
+        self.white_rook_queenside_moved = False
+        self.black_king_moved = False
+        self.black_rook_kingside_moved = False
+        self.black_rook_queenside_moved = False
         
     def verify_moves(self, moves: list[Move]) -> list[Move]:
         verified_moves = []
@@ -104,27 +112,52 @@ class GameState():
                 self.switch_turn()
                 
     def make_move(self, move: Move):
-            if move.move_type == MoveType.CAPTURE:
-                self.captured_pieces.append(self.board[move.to_idx])
-            if move.move_type == MoveType.EN_PASSANT:
-                if self.white_turn:
-                    self.captured_pieces.append(self.board[move.to_idx+8])
-                    self.board[move.to_idx+8] = "  "
-                else:
-                    self.captured_pieces.append(self.board[move.to_idx-8])
-                    self.board[move.to_idx-8] = "  "
-            if move.piece[1] == Pieces.KING:
-                if move.piece[0] == WHITE:
-                    self.white_king = move.to_idx
-                else:
-                    self.black_king = move.to_idx
-            self.board[move.to_idx] = move.piece
-            self.board[move.from_idx] = "  "
-            if move.move_type == MoveType.PROMOTION:
-                if move.piece[0] == WHITE:
-                    self.board[move.to_idx] = "wQ"
-                if move.piece[0] == BLACK:
-                    self.board[move.to_idx] = "bQ"
+        if move.piece == "wK":
+            self.white_king_moved = True
+            self.white_king = move.to_idx
+        elif move.piece == "bK":
+            self.black_king_moved = True
+            self.black_king = move.to_idx
+        elif move.piece == "wR":
+            if move.from_idx == 63:
+                self.white_rook_kingside_moved = True
+            elif move.from_idx == 56:
+                self.white_rook_queenside_moved = True
+        elif move.piece == "bR":
+            if move.from_idx == 7:
+                self.black_rook_kingside_moved = True
+            elif move.from_idx == 0:
+                self.black_rook_queenside_moved = True
+        if move.move_type == MoveType.CAPTURE:
+            self.captured_pieces.append(self.board[move.to_idx])
+        if move.move_type == MoveType.EN_PASSANT:
+            if self.white_turn:
+                self.captured_pieces.append(self.board[move.to_idx+8])
+                self.board[move.to_idx+8] = "  "
+            else:
+                self.captured_pieces.append(self.board[move.to_idx-8])
+                self.board[move.to_idx-8] = "  "
+        if move.move_type == MoveType.CASTLE_KING:
+            if move.piece == "wK":
+                self.board[61] = "wR"
+                self.board[63] = "  "
+            if move.piece == "bK":
+                self.board[5] = "bR"
+                self.board[7] = "  "
+        if move.move_type == MoveType.CASTLE_QUEEN:
+            if move.piece == "wK":
+                self.board[59] = "wR"
+                self.board[56] = "  "
+            if move.piece == "bK":
+                self.board[3] = "bR"
+                self.board[0] = "  "
+        self.board[move.to_idx] = move.piece
+        self.board[move.from_idx] = "  "
+        if move.move_type == MoveType.PROMOTION:
+            if move.piece[0] == WHITE:
+                self.board[move.to_idx] = "wQ"
+            if move.piece[0] == BLACK:
+                self.board[move.to_idx] = "bQ"
 
     def undo_move(self, move: Move):
         self.board[move.from_idx] = move.piece
@@ -185,6 +218,17 @@ class GameState():
         else:
             b = True
         return moves, b
+
+    def is_square_attacked(self, idx: int, by_white: bool) -> bool:
+        if by_white:
+            enemy_moves = self.get_black_moves()
+        else:
+            enemy_moves = self.get_white_moves()
+        for m in enemy_moves:
+            if m.to_idx == idx:
+                return True
+        return False
+
 
     def knight_moves(self, piece: str, loc: int) -> list[Move]:
         moves = []
@@ -277,6 +321,41 @@ class GameState():
             moves, _ = self.move(piece, loc, loc-1, moves)
         if col+1 <= 7:
             moves, _ = self.move(piece, loc, loc+1, moves)
+        if piece[0] == WHITE and not self.white_king_moved:
+            if (not self.white_rook_kingside_moved
+                and self.board[61] == "  " and self.board[62] == "  "
+                and not self.is_square_attacked(60, False)
+                and not self.is_square_attacked(61, False)
+                and not self.is_square_attacked(62, False)
+            ):
+                moves.append(Move("wK", 60, 62, MoveType.CASTLE_KING))
+            if (not self.white_rook_queenside_moved
+                and self.board[58] == "  "
+                and self.board[57] == "  "
+                and self.board[56] == "  "
+                and not self.is_square_attacked(59, False)
+                and not self.is_square_attacked(58, False)
+                and not self.is_square_attacked(57, False)
+            ):
+                moves.append(Move("wK", 60, 58, MoveType.CASTLE_QUEEN))
+        if piece[0] == BLACK and not self.black_king_moved:
+            if (not self.black_rook_kingside_moved
+                and self.board[5] == "  " and self.board[6] == "  "
+                and not self.is_square_attacked(6, False)
+                and not self.is_square_attacked(4, False)
+                and not self.is_square_attacked(5, False)
+            ):
+                moves.append(Move("bK", 4, 6, MoveType.CASTLE_KING))
+            if (not self.black_rook_queenside_moved
+                and self.board[1] == "  "
+                and self.board[2] == "  "
+                and self.board[3] == "  "
+                and not self.is_square_attacked(1, False)
+                and not self.is_square_attacked(2, False)
+                and not self.is_square_attacked(3, False)
+            ):
+                moves.append(Move("bK", 4, 2, MoveType.CASTLE_QUEEN))
+
         return moves
 
     def wp_moves(self, piece, loc):
