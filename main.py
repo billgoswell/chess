@@ -34,8 +34,8 @@ def main():
             drawGame(window, sq_size, images, game_state, moves)
             pygame.display.flip()
             redraw = False
-        if game_state.checkmate:
-            draw_checkmate(window)
+        if game_state.game_over:
+            draw_game_over(window, game_state)
             pygame.display.flip()   
 
 def loadImages(sq_size: int) -> dict[str, pygame.Surface]:
@@ -72,9 +72,23 @@ def drawMoves(window: pygame.Surface, sq_size: int, moves):
         pygame.draw.rect(alpha_surface, (0,0,0,128), (col*sq_size, row*sq_size, sq_size, sq_size))
     window.blit(alpha_surface, (0,0))
 
-def draw_checkmate(window: pygame.Surface):
-    font = pygame.font.SysFont("Arial", 50)
-    window.blit(font.render("Checkmate", True, "red"), (200, 200))
+def draw_game_over(window: pygame.Surface, game_state: GameState):
+    overlay = pygame.Surface((1400, 1400), pygame.SRCALPHA)
+    overlay.fill((0, 0, 0, 180))
+    window.blit(overlay, (0, 0))
+    font = pygame.font.Font(None, 74)
+
+    if game_state.checkmate:
+        if game_state.winner == "w":
+            text = "Checkmate! White wins"
+        else:
+            text = "Checkmate! Black wins"
+    elif game_state.stalemate:
+        text = "Stalemate! Draw"
+    
+    text_surface = font.render(text, True, (255, 255, 255))
+    text_rect = text_surface.get_rect(center=(700, 700))
+    window.blit(text_surface, text_rect)
 
 def get_row_col(loc: int) -> tuple[int, int]:
     return loc//8, loc%8

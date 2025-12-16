@@ -59,6 +59,9 @@ class GameState():
         self.black_king = 4
         self.moves = []
         self.checkmate = False
+        self.stalemate = False
+        self.game_over = False
+        self.winner = None
         self.white_king_moved = False
         self.white_rook_kingside_moved = False
         self.white_rook_queenside_moved = False
@@ -254,6 +257,21 @@ class GameState():
             b = True
         return moves, b
 
+    def switch_turn(self):
+        self.white_turn = not self.white_turn
+        if self.white_turn:
+            moves = self.get_white_moves()
+        else:
+            moves = self.get_black_moves()
+        self.moves = self.verify_moves(moves)
+        if len(self.moves) == 0:
+            self.game_over = True
+            if self.is_in_check(self.white_turn):
+                self.checkmate = True
+                self.winner = "b" if self.white_turn else "w"
+            else:
+                self.stalemate = True
+
     def is_square_attacked(self, idx: int, by_white: bool) -> bool:
         if by_white:
             enemy_moves = self.get_white_moves()
@@ -264,6 +282,12 @@ class GameState():
                 return True
         return False
 
+    def is_in_check(self, white_king: bool) -> bool:
+        if white_king:
+            king_idx = self.white_king
+        else:
+            king_idx = self.black_king
+        return self.is_square_attacked(king_idx, by_white = not white_king)
 
     def knight_moves(self, piece: str, loc: int) -> list[Move]:
         moves = []
@@ -487,16 +511,6 @@ class GameState():
         move = random.choice(moves)
         self.make_move(move)
         self.switch_turn()
-
-    def switch_turn(self):
-        self.white_turn = not self.white_turn
-        if self.white_turn:
-            moves = self.get_white_moves()
-        else:
-            moves = self.get_black_moves()
-        self.moves = self.verify_moves(moves)
-        if len(self.moves) == 0:
-            self.checkmate = True
 
 def idx_to_row_col(idx: int) -> tuple[int, int]:
     return idx // 8, idx % 8
