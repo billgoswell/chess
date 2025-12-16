@@ -30,6 +30,7 @@ class Move:
     move_type: MoveType
     captured: str | None  = None
     promotion_piece: str | None = None
+    castling_rights: tuple | None = None
 
 class GameState():
     def __init__(self):
@@ -160,6 +161,13 @@ class GameState():
                 self.board[move.to_idx] = "bQ"
 
     def undo_move(self, move: Move):
+        if move.castling_rights:
+            (self.white_king_moved,
+             self.white_rook_kingside_moved,
+             self.white_rook_queenside_moved,
+             self.black_king_moved,
+             self.black_rook_kingside_moved,
+             self.black_rook_queenside_moved) = move.castling_rights
         self.board[move.from_idx] = move.piece
         self.board[move.to_idx] = "  "
         if move.piece[1] == Pieces.KING:
@@ -174,6 +182,20 @@ class GameState():
                 self.board[move.to_idx+8] = self.captured_pieces.pop()
             if move.piece == "bp":
                 self.board[move.to_idx-8] = self.captured_pieces.pop()
+        if move.move_type == MoveType.CASTLE_KING:
+            if move.piece == "wK":
+                self.board[63] = "wR"
+                self.board[61] = "  "
+            if move.piece == "bK":
+                self.board[7] = "bR"
+                self.board[5] = "  "
+        if move.move_type == MoveType.CASTLE_QUEEN:
+            if move.piece == "wK":
+                self.board[56] = "wR"
+                self.board[59] = "  "
+            if move.piece == "bK":
+                self.board[0] = "bK"
+                self.board[3] = "  "
 
     def handle_click(self, loc: int) -> list[Move]:
         piece = self.board[loc]
@@ -211,9 +233,22 @@ class GameState():
     def move(self, piece: str, loc1: int, loc2: int, moves: list[Move]) -> tuple[list[Move], bool]:
         b = False
         if self.board[loc2] == "  ":
-            moves.append(Move(piece, loc1, loc2, MoveType.MOVE))
+            moves.append(
+                Move(piece, loc1, loc2, MoveType.MOVE, 
+                    castling_rights=(self.white_king_moved, 
+                                     self.white_rook_kingside_moved,
+                                     self.white_rook_queenside_moved,
+                                     self.black_king_moved,
+                                     self.black_rook_kingside_moved,
+                                     self.black_rook_queenside_moved)))
         elif self.board[loc2][0] != piece[0]:
-            moves.append(Move(piece, loc1, loc2, MoveType.CAPTURE, self.board[loc2]))
+            moves.append(Move(piece, loc1, loc2, MoveType.CAPTURE, self.board[loc2],
+                    castling_rights=(self.white_king_moved, 
+                                     self.white_rook_kingside_moved,
+                                     self.white_rook_queenside_moved,
+                                     self.black_king_moved,
+                                     self.black_rook_kingside_moved,
+                                     self.black_rook_queenside_moved)))
             b = True
         else:
             b = True
@@ -221,9 +256,9 @@ class GameState():
 
     def is_square_attacked(self, idx: int, by_white: bool) -> bool:
         if by_white:
-            enemy_moves = self.get_black_moves()
-        else:
             enemy_moves = self.get_white_moves()
+        else:
+            enemy_moves = self.get_black_moves()
         for m in enemy_moves:
             if m.to_idx == idx:
                 return True
@@ -332,7 +367,7 @@ class GameState():
             if (not self.white_rook_queenside_moved
                 and self.board[58] == "  "
                 and self.board[57] == "  "
-                and self.board[56] == "  "
+                and self.board[59] == "  "
                 and not self.is_square_attacked(59, False)
                 and not self.is_square_attacked(58, False)
                 and not self.is_square_attacked(57, False)
@@ -341,18 +376,18 @@ class GameState():
         if piece[0] == BLACK and not self.black_king_moved:
             if (not self.black_rook_kingside_moved
                 and self.board[5] == "  " and self.board[6] == "  "
-                and not self.is_square_attacked(6, False)
-                and not self.is_square_attacked(4, False)
-                and not self.is_square_attacked(5, False)
+                and not self.is_square_attacked(6, True)
+                and not self.is_square_attacked(4, True)
+                and not self.is_square_attacked(5, True)
             ):
                 moves.append(Move("bK", 4, 6, MoveType.CASTLE_KING))
             if (not self.black_rook_queenside_moved
                 and self.board[1] == "  "
                 and self.board[2] == "  "
                 and self.board[3] == "  "
-                and not self.is_square_attacked(1, False)
-                and not self.is_square_attacked(2, False)
-                and not self.is_square_attacked(3, False)
+                and not self.is_square_attacked(1, True)
+                and not self.is_square_attacked(2, True)
+                and not self.is_square_attacked(3, True)
             ):
                 moves.append(Move("bK", 4, 2, MoveType.CASTLE_QUEEN))
 
