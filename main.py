@@ -30,13 +30,12 @@ def main():
         if not game_state.white_turn:
             game_state.bot_move()
             redraw = True
-        if redraw:
+        if redraw or game_state.game_over:
             drawGame(window, sq_size, images, game_state, moves)
+            if game_state.game_over:
+                draw_game_over(window, game_state)
             pygame.display.flip()
-            redraw = False
-        if game_state.game_over:
-            draw_game_over(window, game_state)
-            pygame.display.flip()   
+            redraw = False   
 
 def loadImages(sq_size: int) -> dict[str, pygame.Surface]:
     pieces = ["wp", "wR", "wN", "wB", "wK", "wQ", "bp", "bR", "bN", "bB", "bK", "bQ"]
