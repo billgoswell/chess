@@ -28,6 +28,7 @@ class Move:
     from_idx: int
     to_idx: int
     move_type: MoveType
+    prev_halfmove_clock: int
     captured: str | None  = None
     promotion_piece: str | None = None
     castling_rights: tuple | None = None
@@ -68,7 +69,18 @@ class GameState():
         self.black_king_moved = False
         self.black_rook_kingside_moved = False
         self.black_rook_queenside_moved = False
+        self.halfmove_clock = 0
         
+    def create_move(self, piece: str, from_idx: int, to_idx: int, move_type: MoveType,
+                     captured: str | None = None, promotion_piece: str | None = None) -> Move:
+        return Move(piece, from_idx, to_idx, move_type, self.halfmove_clock, captured, promotion_piece,
+                    castling_rights=(self.white_king_moved,
+                                     self.white_rook_kingside_moved,
+                                     self.white_rook_queenside_moved,
+                                     self.black_king_moved,
+                                     self.black_rook_kingside_moved,
+                                     self.black_rook_queenside_moved))
+
     def verify_moves(self, moves: list[Move]) -> list[Move]:
         verified_moves = []
         if len(moves) == 0:
@@ -116,6 +128,10 @@ class GameState():
                 self.switch_turn()
                 
     def make_move(self, move: Move):
+        if move.piece[1] == Pieces.PAWN or move.move_type == MoveType.CAPTURE:
+            self.halfmove_clock = 0
+        else:
+            self.halfmove_clock += 1
         if move.piece == "wK":
             self.white_king_moved = True
             self.white_king = move.to_idx
@@ -171,6 +187,7 @@ class GameState():
              self.black_king_moved,
              self.black_rook_kingside_moved,
              self.black_rook_queenside_moved) = move.castling_rights
+        self.halfmove_clock = move.prev_halfmove_clock
         self.board[move.from_idx] = move.piece
         self.board[move.to_idx] = "  "
         if move.piece[1] == Pieces.KING:
@@ -236,22 +253,9 @@ class GameState():
     def move(self, piece: str, loc1: int, loc2: int, moves: list[Move]) -> tuple[list[Move], bool]:
         b = False
         if self.board[loc2] == "  ":
-            moves.append(
-                Move(piece, loc1, loc2, MoveType.MOVE, 
-                    castling_rights=(self.white_king_moved, 
-                                     self.white_rook_kingside_moved,
-                                     self.white_rook_queenside_moved,
-                                     self.black_king_moved,
-                                     self.black_rook_kingside_moved,
-                                     self.black_rook_queenside_moved)))
+            moves.append(self.create_move(piece, loc1, loc2, MoveType.MOVE))
         elif self.board[loc2][0] != piece[0]:
-            moves.append(Move(piece, loc1, loc2, MoveType.CAPTURE, self.board[loc2],
-                    castling_rights=(self.white_king_moved, 
-                                     self.white_rook_kingside_moved,
-                                     self.white_rook_queenside_moved,
-                                     self.black_king_moved,
-                                     self.black_rook_kingside_moved,
-                                     self.black_rook_queenside_moved)))
+            moves.append(self.create_move(piece, loc1, loc2, MoveType.CAPTURE, self.board[loc2]))
             b = True
         else:
             b = True
@@ -271,6 +275,11 @@ class GameState():
                 self.winner = "b" if self.white_turn else "w"
             else:
                 self.stalemate = True
+        if self.is_fifty_move_draw():
+            self.game_over = True
+
+    def is_fifty_move_draw(self) -> bool:
+        return self.halfmove_clock >= 100
 
     def is_square_attacked(self, idx: int, by_white: bool) -> bool:
         if by_white:
@@ -387,7 +396,7 @@ class GameState():
                 and not self.is_square_attacked(61, False)
                 and not self.is_square_attacked(62, False)
             ):
-                moves.append(Move("wK", 60, 62, MoveType.CASTLE_KING))
+                moves.append(self.create_move("wK", 60, 62, MoveType.CASTLE_KING))
             if (not self.white_rook_queenside_moved
                 and self.board[58] == "  "
                 and self.board[57] == "  "
@@ -396,7 +405,7 @@ class GameState():
                 and not self.is_square_attacked(58, False)
                 and not self.is_square_attacked(57, False)
             ):
-                moves.append(Move("wK", 60, 58, MoveType.CASTLE_QUEEN))
+                moves.append(self.create_move("wK", 60, 58, MoveType.CASTLE_QUEEN))
         if piece[0] == BLACK and not self.black_king_moved:
             if (not self.black_rook_kingside_moved
                 and self.board[5] == "  " and self.board[6] == "  "
@@ -404,7 +413,7 @@ class GameState():
                 and not self.is_square_attacked(4, True)
                 and not self.is_square_attacked(5, True)
             ):
-                moves.append(Move("bK", 4, 6, MoveType.CASTLE_KING))
+                moves.append(self.create_move("bK", 4, 6, MoveType.CASTLE_KING))
             if (not self.black_rook_queenside_moved
                 and self.board[1] == "  "
                 and self.board[2] == "  "
@@ -413,7 +422,7 @@ class GameState():
                 and not self.is_square_attacked(2, True)
                 and not self.is_square_attacked(3, True)
             ):
-                moves.append(Move("bK", 4, 2, MoveType.CASTLE_QUEEN))
+                moves.append(self.create_move("bK", 4, 2, MoveType.CASTLE_QUEEN))
 
         return moves
 
@@ -424,29 +433,29 @@ class GameState():
             if row == 1:
                 moves.extend(self.get_promo_moves(piece, loc, loc-8))
             else:
-                moves.append(Move(piece, loc, loc-8, MoveType.MOVE))
+                moves.append(self.create_move(piece, loc, loc-8, MoveType.MOVE))
                 if row == 6:
                     if self.board[loc-16] == "  ":
-                        moves.append(Move(piece, loc, loc-16, MoveType.DOUBLE))
+                        moves.append(self.create_move(piece, loc, loc-16, MoveType.DOUBLE))
         if col < 7:
             if self.board[loc-7][0] == BLACK:
                 if row == 1:
                     moves.extend(self.get_promo_moves(piece, loc, loc-7, self.board[loc-7]))
                 else:
-                    moves.append(Move(piece, loc, loc-7, MoveType.CAPTURE, self.board[loc-7]))
+                    moves.append(self.create_move(piece, loc, loc-7, MoveType.CAPTURE, self.board[loc-7]))
         if col > 0:
             if self.board[loc-9][0] == BLACK:
                 if row == 1:
                     moves.extend(self.get_promo_moves(piece, loc, loc-9, self.board[loc-9]))
                 else:
-                    moves.append(Move(piece, loc, loc-9, MoveType.CAPTURE, self.board[loc-9]))
+                    moves.append(self.create_move(piece, loc, loc-9, MoveType.CAPTURE, self.board[loc-9]))
         if row == 3:
             if self.move_history[-1].move_type == MoveType.DOUBLE:
                 l = self.move_history[-1].to_idx
                 if loc+1 == l:
-                    moves.append(Move(piece, loc, loc-7, MoveType.EN_PASSANT))
+                    moves.append(self.create_move(piece, loc, loc-7, MoveType.EN_PASSANT))
                 if loc-1 == l:
-                    moves.append(Move(piece, loc, loc-9, MoveType.EN_PASSANT))
+                    moves.append(self.create_move(piece, loc, loc-9, MoveType.EN_PASSANT))
         return moves
         
                         
@@ -457,39 +466,39 @@ class GameState():
             if row == 6:
                 moves.extend(self.get_promo_moves(piece, loc, loc+8))
             else:
-                moves.append(Move(piece, loc, loc+8, MoveType.MOVE))
+                moves.append(self.create_move(piece, loc, loc+8, MoveType.MOVE))
                 if row == 1:
                     if self.board[loc+16] == "  ":
-                        moves.append(Move(piece, loc, loc+16, MoveType.DOUBLE))
+                        moves.append(self.create_move(piece, loc, loc+16, MoveType.DOUBLE))
         if col < 7:
             if self.board[loc+9][0] == WHITE:
                 if row == 6:
                     moves.extend(self.get_promo_moves(piece, loc, loc+9, self.board[loc+9]))
                 else:
-                    moves.append(Move(piece, loc, loc+9, MoveType.CAPTURE, self.board[loc+9]))
+                    moves.append(self.create_move(piece, loc, loc+9, MoveType.CAPTURE, self.board[loc+9]))
         if col > 0:
             if self.board[loc+7][0] == WHITE:
                 if row == 6:
                     moves.extend(self.get_promo_moves(piece, loc, loc+7, self.board[loc+7]))
                 else:
-                    moves.append(Move(piece, loc, loc+7, MoveType.CAPTURE, self.board[loc+7]))
+                    moves.append(self.create_move(piece, loc, loc+7, MoveType.CAPTURE, self.board[loc+7]))
         if row == 4:
             if self.move_history[-1].move_type == MoveType.DOUBLE:
                 l = self.move_history[-1].to_idx
                 if loc+1 == l:
-                    moves.append(Move(piece, loc, loc+9, MoveType.EN_PASSANT))
+                    moves.append(self.create_move(piece, loc, loc+9, MoveType.EN_PASSANT))
                 if loc-1 == l:
-                    moves.append(Move(piece, loc, loc+7, MoveType.EN_PASSANT))
+                    moves.append(self.create_move(piece, loc, loc+7, MoveType.EN_PASSANT))
         return moves
 
     def get_promo_moves(self, piece: str, loc: int, to_loc: int, captured: str | None = None) -> list[Move]:
         moves = []
         if piece[0] == WHITE:
             for p in ["wQ", "wR", "wB", "wN"]:
-                moves.append(Move(piece, loc, to_loc, MoveType.PROMOTION, captured, p))
+                moves.append(self.create_move(piece, loc, to_loc, MoveType.PROMOTION, captured, p))
         else:
             for p in ["bQ", "bR", "bB", "bN"]:
-                moves.append(Move(piece, loc, to_loc, MoveType.PROMOTION, captured, p))
+                moves.append(self.create_move(piece, loc, to_loc, MoveType.PROMOTION, captured, p))
         return moves
     
     def bot_move(self):
