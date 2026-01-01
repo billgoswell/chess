@@ -13,7 +13,9 @@ def main():
     print(game_state.board)
     redraw = True
     moves = []
+    clock = pygame.time.Clock()
     while running:
+        clock.tick(60)
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 loc = get_loc(pygame.mouse.get_pos(), sq_size)
@@ -84,7 +86,11 @@ def draw_game_over(window: pygame.Surface, game_state: GameState):
             text = "Checkmate! Black wins"
     elif game_state.stalemate:
         text = "Stalemate! Draw"
-    
+    elif game_state.is_fifty_move_draw():
+        text = "Draw by fifty-move rule"
+    else:
+        text = "Game Over"
+
     text_surface = font.render(text, True, (255, 255, 255))
     text_rect = text_surface.get_rect(center=(700, 700))
     window.blit(text_surface, text_rect)

@@ -214,7 +214,7 @@ class GameState():
                 self.board[56] = "wR"
                 self.board[59] = "  "
             if move.piece == "bK":
-                self.board[0] = "bK"
+                self.board[0] = "bR"
                 self.board[3] = "  "
 
     def handle_click(self, loc: int) -> list[Move]:
