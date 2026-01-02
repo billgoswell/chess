@@ -70,7 +70,29 @@ class GameState():
         self.black_rook_kingside_moved = False
         self.black_rook_queenside_moved = False
         self.halfmove_clock = 0
-        
+        self.position_history = {}
+
+    def get_position_key(self) -> tuple:
+        # Get en passant square if applicable
+        en_passant_sq = None
+        if len(self.move_history) > 0:
+            last_move = self.move_history[-1]
+            if last_move.move_type == MoveType.DOUBLE:
+                en_passant_sq = last_move.to_idx
+
+        return (tuple(self.board),
+                self.white_turn,
+                self.white_king_moved,
+                self.white_rook_kingside_moved,
+                self.white_rook_queenside_moved,
+                self.black_king_moved,
+                self.black_rook_kingside_moved,
+                self.black_rook_queenside_moved,
+                en_passant_sq)
+
+    def is_threefold_repetition(self) -> bool:
+        return self.position_history.get(self.get_position_key(), 0) >= 3
+
     def create_move(self, piece: str, from_idx: int, to_idx: int, move_type: MoveType,
                      captured: str | None = None, promotion_piece: str | None = None) -> Move:
         return Move(piece, from_idx, to_idx, move_type, self.halfmove_clock, captured, promotion_piece,
@@ -263,6 +285,10 @@ class GameState():
 
     def switch_turn(self):
         self.white_turn = not self.white_turn
+        # Track position for threefold repetition
+        pos_key = self.get_position_key()
+        self.position_history[pos_key] = self.position_history.get(pos_key, 0) + 1
+
         if self.white_turn:
             moves = self.get_white_moves()
         else:
@@ -275,7 +301,7 @@ class GameState():
                 self.winner = "b" if self.white_turn else "w"
             else:
                 self.stalemate = True
-        if self.is_fifty_move_draw():
+        if self.is_fifty_move_draw() or self.is_threefold_repetition():
             self.game_over = True
 
     def is_fifty_move_draw(self) -> bool:

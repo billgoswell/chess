@@ -17,7 +17,8 @@ def main():
         clock.tick(60)
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
-                loc = get_loc(pygame.mouse.get_pos(), sq_size)
+                pos = pygame.mouse.get_pos()
+                loc = get_loc(pos, sq_size)
                 moves = game_state.handle_click(loc)
                 redraw = True
             if event.type == pygame.MOUSEBUTTONUP:
@@ -120,6 +121,8 @@ def draw_game_over(window: pygame.Surface, game_state: GameState):
         text = "Stalemate! Draw"
     elif game_state.is_fifty_move_draw():
         text = "Draw by fifty-move rule"
+    elif game_state.is_threefold_repetition():
+        text = "Draw by threefold repetition"
     else:
         text = "Game Over"
 
