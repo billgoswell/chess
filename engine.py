@@ -106,18 +106,18 @@ class GameState():
         self.undo_move(move)
         return legal
 
-    def get_white_moves(self) -> list[Move]:
+    def get_white_moves(self, include_castling: bool = True) -> list[Move]:
         all_white_moves = []
         for i in range(64):
             if self.board[i][0] == WHITE:
-                all_white_moves.extend(self.get_moves(self.board[i], i))
+                all_white_moves.extend(self.get_moves(self.board[i], i, include_castling))
         return all_white_moves
 
-    def get_black_moves(self) -> list[Move]:
+    def get_black_moves(self, include_castling: bool = True) -> list[Move]:
         all_black_moves = []
         for i in range(64):
             if self.board[i][0] == BLACK:
-                all_black_moves.extend(self.get_moves(self.board[i], i))
+                all_black_moves.extend(self.get_moves(self.board[i], i, include_castling))
         return all_black_moves
 
     def click_move(self, loc: int, moves: list[Move]):
@@ -228,7 +228,7 @@ class GameState():
         return verified_moves
 
         
-    def get_moves(self, piece: str, loc: int) -> list[Move]:
+    def get_moves(self, piece: str, loc: int, include_castling: bool = True) -> list[Move]:
         moves = [] 
         match piece[1]:
             case " ":
@@ -245,7 +245,7 @@ class GameState():
             case Pieces.QUEEN:
                 moves =  self.queen_moves(piece, loc)
             case Pieces.KING:
-                moves = self.king_moves(piece, loc)
+                moves = self.king_moves(piece, loc, include_castling)
             case Pieces.KNIGHT:
                 moves = self.knight_moves(piece, loc)
         return moves
@@ -283,9 +283,9 @@ class GameState():
 
     def is_square_attacked(self, idx: int, by_white: bool) -> bool:
         if by_white:
-            enemy_moves = self.get_white_moves()
+            enemy_moves = self.get_white_moves(False)
         else:
-            enemy_moves = self.get_black_moves()
+            enemy_moves = self.get_black_moves(False)
         for m in enemy_moves:
             if m.to_idx == idx:
                 return True
@@ -370,7 +370,7 @@ class GameState():
         moves.extend(self.rook_moves(piece, loc))
         return moves
 
-    def king_moves(self, piece: str, loc: int) -> list[Move]:
+    def king_moves(self, piece: str, loc: int, include_castling: bool = True) -> list[Move]:
         moves = []
         row, col = idx_to_row_col(loc)
         if row-1 >= 0:
@@ -389,7 +389,7 @@ class GameState():
             moves, _ = self.move(piece, loc, loc-1, moves)
         if col+1 <= 7:
             moves, _ = self.move(piece, loc, loc+1, moves)
-        if piece[0] == WHITE and not self.white_king_moved:
+        if piece[0] == WHITE and not self.white_king_moved and include_castling:
             if (not self.white_rook_kingside_moved
                 and self.board[61] == "  " and self.board[62] == "  "
                 and not self.is_square_attacked(60, False)
