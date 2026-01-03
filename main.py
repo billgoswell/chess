@@ -3,7 +3,7 @@ from engine import GameState
 
 def main():
     pygame.init()
-    window_size = 1400 
+    window_size = 1400
     window = pygame.display.set_mode((window_size + window_size//4,window_size))
     window.fill('grey')
     running = True
@@ -13,14 +13,20 @@ def main():
     redraw = True
     moves = []
     clock = pygame.time.Clock()
+    new_game_btn = pygame.Rect(window_size+10, window_size - 80, sq_size * 2 - 20, 60)
     while running:
         clock.tick(60)
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pos = pygame.mouse.get_pos()
-                loc = get_loc(pos, sq_size)
-                moves = game_state.handle_click(loc)
-                redraw = True
+                if new_game_btn.collidepoint(pos):
+                    game_state = GameState()
+                    moves = []
+                    redraw = True
+                else:
+                    loc = get_loc(pos, sq_size)
+                    moves = game_state.handle_click(loc)
+                    redraw = True
             if event.type == pygame.MOUSEBUTTONUP:
                 loc = get_loc(pygame.mouse.get_pos(), sq_size)
                 game_state.click_move(loc, moves)
@@ -54,6 +60,17 @@ def draw_game(window: pygame.Surface, sq_size: int, images, game_state: GameStat
     draw_moves(window, sq_size, moves)
     draw_pieces(window, sq_size, images, game_state)
     draw_del_pieces(window, sq_size, del_images, game_state)
+    draw_new_game_btn(window, sq_size)
+
+def draw_new_game_btn(window: pygame.Surface, sq_size: int):
+    width = sq_size * 8
+    btn_rect = pygame.Rect(width+10, 1400 - 80, sq_size * 2-20, 60)
+    pygame.draw.rect(window, (70, 130, 70), btn_rect, border_radius=10)
+    pygame.draw.rect(window, (50, 100, 50), btn_rect, 3, border_radius=10)
+    font = pygame.font.Font(None, 40)
+    text = font.render("New Game", True, (255, 255, 255))
+    text_rect = text.get_rect(center=btn_rect.center)
+    window.blit(text, text_rect)
 
 def draw_board(window: pygame.Surface, sq_size: int):
     colors = [(255,255,255), (125,215,100)] 
