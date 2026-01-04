@@ -73,7 +73,6 @@ class GameState():
         self.position_history = {}
 
     def get_position_key(self) -> tuple:
-        # Get en passant square if applicable
         en_passant_sq = None
         if len(self.move_history) > 0:
             last_move = self.move_history[-1]
@@ -196,10 +195,7 @@ class GameState():
         self.board[move.to_idx] = move.piece
         self.board[move.from_idx] = "  "
         if move.move_type == MoveType.PROMOTION:
-            if move.piece[0] == WHITE:
-                self.board[move.to_idx] = "wQ"
-            if move.piece[0] == BLACK:
-                self.board[move.to_idx] = "bQ"
+            self.board[move.to_idx] = move.promotion_piece
 
     def undo_move(self, move: Move):
         if move.castling_rights:
@@ -526,7 +522,21 @@ class GameState():
             for p in ["bQ", "bR", "bB", "bN"]:
                 moves.append(self.create_move(piece, loc, to_loc, MoveType.PROMOTION, captured, p))
         return moves
-    
+
+    def undo_last_move(self):
+        if len(self.move_history) == 0:
+            return
+        move = self.move_history.pop()
+        self.undo_move(move)
+        self.white_turn = not self.white_turn
+        pos_key = self.get_position_key()
+        if pos_key in self.position_history:
+            self.position_history[pos_key] -= 1
+        self.game_over = False
+        self.checkmate = False
+        self.stalemate = False
+        self.winner = None
+
     def bot_move(self):
         if len(self.moves) == 0:
             return
@@ -545,6 +555,7 @@ class GameState():
     def rand_move(self, moves: list[Move]):
         move = random.choice(moves)
         self.make_move(move)
+        self.move_history.append(move)
         self.switch_turn()
 
 def idx_to_row_col(idx: int) -> tuple[int, int]:
