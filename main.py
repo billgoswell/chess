@@ -12,6 +12,7 @@ def main():
     game_state = GameState()
     redraw = True
     moves = []
+    pending_promotion = None
     clock = pygame.time.Clock()
     new_game_btn = pygame.Rect(window_size+10, window_size - 80, sq_size * 2 - 20, 60)
     undo_btn = pygame.Rect(window_size+10, window_size - 160, sq_size * 2 - 20, 60)
@@ -20,9 +21,19 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.MOUSEBUTTONDOWN:
                 pos = pygame.mouse.get_pos()
-                if new_game_btn.collidepoint(pos):
+                if pending_promotion:
+                    chosen = get_promotion_choice(pos, sq_size, pending_promotion)
+                    if chosen:
+                        game_state.make_move(chosen)
+                        game_state.move_history.append(chosen)
+                        game_state.switch_turn()
+                    pending_promotion = None
+                    moves = []
+                    redraw = True
+                elif new_game_btn.collidepoint(pos):
                     game_state = GameState()
                     moves = []
+                    pending_promotion = None
                     redraw = True
                 elif undo_btn.collidepoint(pos):
                     if len(game_state.move_history) >= 2:
@@ -34,11 +45,16 @@ def main():
                     loc = get_loc(pos, sq_size)
                     moves = game_state.handle_click(loc)
                     redraw = True
-            if event.type == pygame.MOUSEBUTTONUP:
+            if event.type == pygame.MOUSEBUTTONUP and not pending_promotion:
                 loc = get_loc(pygame.mouse.get_pos(), sq_size)
-                game_state.click_move(loc, moves)
-                moves = []
-                redraw = True
+                promo_moves = [m for m in moves if m.to_idx == loc and m.move_type.value == "promotion"]
+                if promo_moves:
+                    pending_promotion = promo_moves
+                    redraw = True
+                else:
+                    game_state.click_move(loc, moves)
+                    moves = []
+                    redraw = True
             if event.type == pygame.QUIT:
                 running = False
                 break
@@ -47,6 +63,8 @@ def main():
             redraw = True
         if redraw or game_state.game_over:
             draw_game(window, sq_size, images, game_state, moves, del_images)
+            if pending_promotion:
+                draw_promotion_ui(window, sq_size, images, pending_promotion)
             if game_state.game_over:
                 draw_game_over(window, game_state)
             pygame.display.flip()
@@ -89,6 +107,35 @@ def draw_undo_btn(window: pygame.Surface, sq_size: int):
     text = font.render("Undo", True, (255, 255, 255))
     text_rect = text.get_rect(center=btn_rect.center)
     window.blit(text, text_rect)
+
+def draw_promotion_ui(window: pygame.Surface, sq_size: int, images, promo_moves):
+    to_idx = promo_moves[0].to_idx
+    row, col = get_row_col(to_idx)
+    is_white = promo_moves[0].piece[0] == "w"
+    x = col * sq_size
+    if is_white:
+        y = row * sq_size
+    else:
+        y = row * sq_size + sq_size - sq_size * 4
+    pygame.draw.rect(window, (200, 200, 200), (x, y, sq_size, sq_size * 4))
+    pygame.draw.rect(window, (100, 100, 100), (x, y, sq_size, sq_size * 4), 2)
+    for i, move in enumerate(promo_moves):
+        window.blit(images[move.promotion_piece], (x, y + i * sq_size))
+
+def get_promotion_choice(pos, sq_size, promo_moves):
+    to_idx = promo_moves[0].to_idx
+    row, col = get_row_col(to_idx)
+    is_white = promo_moves[0].piece[0] == "w"
+    x = col * sq_size
+    if is_white:
+        y = row * sq_size
+    else:
+        y = row * sq_size + sq_size - sq_size * 4
+    for i, move in enumerate(promo_moves):
+        rect = pygame.Rect(x, y + i * sq_size, sq_size, sq_size)
+        if rect.collidepoint(pos):
+            return move
+    return None
 
 def draw_board(window: pygame.Surface, sq_size: int):
     colors = [(255,255,255), (125,215,100)] 
