@@ -34,7 +34,7 @@ def main():
                         game_state.bot_move()
                         redraw = True
                 elif pending_promotion:
-                    chosen = get_promotion_choice(pos, sq_size, pending_promotion)
+                    chosen = get_promotion_choice(pos, sq_size, pending_promotion, player_color)
                     if chosen:
                         game_state.make_move(chosen)
                         game_state.move_history.append(chosen)
@@ -56,13 +56,13 @@ def main():
                         moves = []
                         redraw = True
                 else:
-                    loc = get_loc(pos, sq_size)
+                    loc = get_loc(pos, sq_size, player_color == "b")
                     moves = game_state.handle_click(loc)
                     if moves:
                         dragging = loc
                     redraw = True
             if event.type == pygame.MOUSEBUTTONUP and not pending_promotion and player_color:
-                loc = get_loc(pygame.mouse.get_pos(), sq_size)
+                loc = get_loc(pygame.mouse.get_pos(), sq_size, player_color == "b")
                 promo_moves = [m for m in moves if m.to_idx == loc and m.move_type.value == "promotion"]
                 if promo_moves:
                     pending_promotion = promo_moves
@@ -83,13 +83,13 @@ def main():
             if player_color is None:
                 draw_start_screen(window, window_size, white_btn, black_btn)
             else:
-                draw_game(window, sq_size, images, game_state, moves, del_images, dragging)
+                draw_game(window, sq_size, images, game_state, moves, del_images, dragging, player_color)
                 if dragging:
                     mouse_pos = pygame.mouse.get_pos()
                     piece = game_state.board[dragging]
                     window.blit(images[piece], (mouse_pos[0] - sq_size//2, mouse_pos[1] - sq_size//2))
                 if pending_promotion:
-                    draw_promotion_ui(window, sq_size, images, pending_promotion)
+                    draw_promotion_ui(window, sq_size, images, pending_promotion, player_color)
                 if game_state.game_over:
                     draw_game_over(window, game_state)
             pygame.display.flip()
@@ -105,10 +105,11 @@ def load_images(sq_size: int) -> tuple[dict[str, pygame.Surface], dict[str, pyga
         del_images[piece] = pygame.transform.scale(image, (sq_size//2, sq_size//2))
     return images, del_images
 
-def draw_game(window: pygame.Surface, sq_size: int, images, game_state: GameState, moves, del_images, dragging=None):
-    draw_board(window, sq_size)
-    draw_moves(window, sq_size, moves)
-    draw_pieces(window, sq_size, images, game_state, dragging)
+def draw_game(window: pygame.Surface, sq_size: int, images, game_state: GameState, moves, del_images, dragging=None, player_color="w"):
+    flipped = player_color == "b"
+    draw_board(window, sq_size, flipped)
+    draw_moves(window, sq_size, moves, flipped)
+    draw_pieces(window, sq_size, images, game_state, dragging, flipped)
     draw_del_pieces(window, sq_size, del_images, game_state)
     draw_new_game_btn(window, sq_size)
     draw_undo_btn(window, sq_size)
@@ -149,49 +150,55 @@ def draw_undo_btn(window: pygame.Surface, sq_size: int):
     text_rect = text.get_rect(center=btn_rect.center)
     window.blit(text, text_rect)
 
-def draw_promotion_ui(window: pygame.Surface, sq_size: int, images, promo_moves):
+def draw_promotion_ui(window: pygame.Surface, sq_size: int, images, promo_moves, player_color="w"):
     to_idx = promo_moves[0].to_idx
     row, col = get_row_col(to_idx)
+    flipped = player_color == "b"
+    draw_row, draw_col = (7 - row, 7 - col) if flipped else (row, col)
     is_white = promo_moves[0].piece[0] == "w"
-    x = col * sq_size
-    if is_white:
-        y = row * sq_size
+    x = draw_col * sq_size
+    if (is_white and not flipped) or (not is_white and flipped):
+        y = draw_row * sq_size
     else:
-        y = row * sq_size + sq_size - sq_size * 4
+        y = draw_row * sq_size + sq_size - sq_size * 4
     pygame.draw.rect(window, (200, 200, 200), (x, y, sq_size, sq_size * 4))
     pygame.draw.rect(window, (100, 100, 100), (x, y, sq_size, sq_size * 4), 2)
     for i, move in enumerate(promo_moves):
         window.blit(images[move.promotion_piece], (x, y + i * sq_size))
 
-def get_promotion_choice(pos, sq_size, promo_moves):
+def get_promotion_choice(pos, sq_size, promo_moves, player_color="w"):
     to_idx = promo_moves[0].to_idx
     row, col = get_row_col(to_idx)
+    flipped = player_color == "b"
+    draw_row, draw_col = (7 - row, 7 - col) if flipped else (row, col)
     is_white = promo_moves[0].piece[0] == "w"
-    x = col * sq_size
-    if is_white:
-        y = row * sq_size
+    x = draw_col * sq_size
+    if (is_white and not flipped) or (not is_white and flipped):
+        y = draw_row * sq_size
     else:
-        y = row * sq_size + sq_size - sq_size * 4
+        y = draw_row * sq_size + sq_size - sq_size * 4
     for i, move in enumerate(promo_moves):
         rect = pygame.Rect(x, y + i * sq_size, sq_size, sq_size)
         if rect.collidepoint(pos):
             return move
     return None
 
-def draw_board(window: pygame.Surface, sq_size: int):
-    colors = [(255,255,255), (125,215,100)] 
+def draw_board(window: pygame.Surface, sq_size: int, flipped=False):
+    colors = [(255,255,255), (125,215,100)]
     for i in range(64):
         row, col = get_row_col(i)
-        pygame.draw.rect(window, colors[(row+col)%2], (col*sq_size, row*sq_size, sq_size, sq_size)) 
+        draw_row, draw_col = (7 - row, 7 - col) if flipped else (row, col)
+        pygame.draw.rect(window, colors[(row+col)%2], (draw_col*sq_size, draw_row*sq_size, sq_size, sq_size)) 
 
-def draw_pieces(window: pygame.Surface, sq_size: int, image, game_state: GameState, dragging=None):
+def draw_pieces(window: pygame.Surface, sq_size: int, image, game_state: GameState, dragging=None, flipped=False):
     for i in range(64):
         if i == dragging:
             continue
         row, col = get_row_col(i)
+        draw_row, draw_col = (7 - row, 7 - col) if flipped else (row, col)
         current = game_state.board[i]
         if current != "  ":
-            window.blit(image[current], (col*sq_size, row*sq_size))
+            window.blit(image[current], (draw_col*sq_size, draw_row*sq_size))
 
 def draw_del_pieces(window: pygame.Surface, sq_size: int, del_image, game_state: GameState):
     width = sq_size * 8
@@ -224,11 +231,12 @@ def draw_del_pieces(window: pygame.Surface, sq_size: int, del_image, game_state:
                 black_other += 1
             window.blit(del_image[piece], (horz_offset, vertical_offset))
 
-def draw_moves(window: pygame.Surface, sq_size: int, moves):
-    alpha_surface = pygame.Surface(window.get_size(), pygame.SRCALPHA) 
+def draw_moves(window: pygame.Surface, sq_size: int, moves, flipped=False):
+    alpha_surface = pygame.Surface(window.get_size(), pygame.SRCALPHA)
     for move in moves:
         row, col = get_row_col(move.to_idx)
-        pygame.draw.rect(alpha_surface, (0,0,0,128), (col*sq_size, row*sq_size, sq_size, sq_size))
+        draw_row, draw_col = (7 - row, 7 - col) if flipped else (row, col)
+        pygame.draw.rect(alpha_surface, (0,0,0,128), (draw_col*sq_size, draw_row*sq_size, sq_size, sq_size))
     window.blit(alpha_surface, (0,0))
 
 def draw_game_over(window: pygame.Surface, game_state: GameState):
@@ -270,9 +278,11 @@ def sort_pieces(pieces: list[str]):
 def get_row_col(loc: int) -> tuple[int, int]:
     return loc//8, loc%8
 
-def get_loc(pos: tuple[int, int], sq_size: int):
+def get_loc(pos: tuple[int, int], sq_size: int, flipped=False):
     row = pos[1]//sq_size
     col = pos[0]//sq_size
+    if flipped:
+        row, col = 7 - row, 7 - col
     return (row*8 + col)
 
 if __name__ == "__main__":
