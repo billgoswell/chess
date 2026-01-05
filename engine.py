@@ -71,6 +71,7 @@ class GameState():
         self.black_rook_queenside_moved = False
         self.halfmove_clock = 0
         self.position_history = {}
+        self.moves = self.verify_moves(self.get_white_moves())
 
     def get_position_key(self) -> tuple:
         en_passant_sq = None
