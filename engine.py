@@ -13,6 +13,69 @@ class Pieces:
     QUEEN = "Q"
     PAWN = "p"
 
+PIECE_SQUARE_TABLES = {
+    Pieces.PAWN: [
+         0,  0,  0,  0,  0,  0,  0,  0,
+         5, 10, 10,-20,-20, 10, 10,  5,
+         5, -5,-10,  0,  0,-10, -5,  5,
+         0,  0,  0, 20, 20,  0,  0,  0,
+         5,  5, 10, 25, 25, 10,  5,  5,
+        10, 10, 20, 30, 30, 20, 10, 10,
+        50, 50, 50, 50, 50, 50, 50, 50,
+         0,  0,  0,  0,  0,  0,  0,  0
+    ],
+    Pieces.KNIGHT: [
+       -50,-40,-30,-30,-30,-30,-40,-50,
+       -40,-20,  0,  5,  5,  0,-20,-40,
+       -30,  5, 10, 15, 15, 10,  5,-30,
+       -30,  0, 15, 20, 20, 15,  0,-30,
+       -30,  5, 15, 20, 20, 15,  5,-30,
+       -30,  0, 10, 15, 15, 10,  0,-30,
+       -40,-20,  0,  0,  0,  0,-20,-40,
+       -50,-40,-30,-30,-30,-30,-40,-50
+    ],
+    Pieces.BISHOP: [
+       -20,-10,-10,-10,-10,-10,-10,-20,
+       -10,  5,  0,  0,  0,  0,  5,-10,
+       -10, 10, 10, 10, 10, 10, 10,-10,
+       -10,  0, 10, 10, 10, 10,  0,-10,
+       -10,  5,  5, 10, 10,  5,  5,-10,
+       -10,  0,  5, 10, 10,  5,  0,-10,
+       -10,  0,  0,  0,  0,  0,  0,-10,
+       -20,-10,-10,-10,-10,-10,-10,-20
+    ],
+    Pieces.ROOK: [
+         0,  0,  0,  5,  5,  0,  0,  0,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+        -5,  0,  0,  0,  0,  0,  0, -5,
+         5, 10, 10, 10, 10, 10, 10,  5,
+         0,  0,  0,  0,  0,  0,  0,  0
+    ],
+    Pieces.QUEEN: [
+       -20,-10,-10, -5, -5,-10,-10,-20,
+       -10,  0,  0,  0,  0,  0,  0,-10,
+       -10,  5,  5,  5,  5,  5,  0,-10,
+        -5,  0,  5,  5,  5,  5,  0, -5,
+         0,  0,  5,  5,  5,  5,  0, -5,
+       -10,  0,  5,  5,  5,  5,  0,-10,
+       -10,  0,  0,  0,  0,  0,  0,-10,
+       -20,-10,-10, -5, -5,-10,-10,-20
+    ],
+    Pieces.KING: [
+        20, 30, 10,  0,  0, 10, 30, 20,
+        20, 20,  0,  0,  0,  0, 20, 20,
+       -10,-20,-20,-20,-20,-20,-20,-10,
+       -20,-30,-30,-40,-40,-30,-30,-20,
+       -30,-40,-40,-50,-50,-40,-40,-30,
+       -30,-40,-40,-50,-50,-40,-40,-30,
+       -30,-40,-40,-50,-50,-40,-40,-30,
+       -30,-40,-40,-50,-50,-40,-40,-30
+    ]
+}
+
 class MoveType(Enum):
     MOVE = "move"
     CAPTURE = "capture"
@@ -43,16 +106,6 @@ class GameState():
                       "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ",
                       "wp", "wp", "wp", "wp", "wp", "wp", "wp", "wp",
                       "wR", "wN", "wB", "wQ", "wK", "wB", "wN", "wR"]
-#        self.board = [
-#                      "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ",
-#                      "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ",
-#                      "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ",
-#                      "  ", "  ", "  ", "wN", "  ", "  ", "  ", "  ",
-#                      "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ",
-#                      "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ",
-#                      "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  ",
-#                      "  ", "  ", "  ", "  ", "  ", "  ", "  ", "  "
-#                    ]
         self.white_turn = True
         self.move_history = []
         self.captured_pieces = []
@@ -71,7 +124,7 @@ class GameState():
         self.black_rook_queenside_moved = False
         self.halfmove_clock = 0
         self.position_history = {}
-        self.moves = self.verify_moves(self.get_white_moves())
+        self.moves = self.verify_moves(self.get_moves_for_color(WHITE))
 
     def get_position_key(self) -> tuple:
         en_passant_sq = None
@@ -116,10 +169,10 @@ class GameState():
         legal = True
         self.make_move(move)
         if self.white_turn:
-            enemy_moves = self.get_black_moves()
+            enemy_moves = self.get_moves_for_color(BLACK)
             king_loc = self.white_king
         else:
-            enemy_moves = self.get_white_moves()
+            enemy_moves = self.get_moves_for_color(WHITE)
             king_loc = self.black_king
         for m in enemy_moves:
             if m.to_idx == king_loc:
@@ -128,19 +181,12 @@ class GameState():
         self.undo_move(move)
         return legal
 
-    def get_white_moves(self, include_castling: bool = True) -> list[Move]:
-        all_white_moves = []
+    def get_moves_for_color(self, color: str, include_castling: bool = True) -> list[Move]:
+        moves = []
         for i in range(64):
-            if self.board[i][0] == WHITE:
-                all_white_moves.extend(self.get_moves(self.board[i], i, include_castling))
-        return all_white_moves
-
-    def get_black_moves(self, include_castling: bool = True) -> list[Move]:
-        all_black_moves = []
-        for i in range(64):
-            if self.board[i][0] == BLACK:
-                all_black_moves.extend(self.get_moves(self.board[i], i, include_castling))
-        return all_black_moves
+            if self.board[i][0] == color:
+                moves.extend(self.get_moves(self.board[i], i, include_castling))
+        return moves
 
     def click_move(self, loc: int, moves: list[Move]):
         for move in moves:
@@ -286,10 +332,7 @@ class GameState():
         pos_key = self.get_position_key()
         self.position_history[pos_key] = self.position_history.get(pos_key, 0) + 1
 
-        if self.white_turn:
-            moves = self.get_white_moves()
-        else:
-            moves = self.get_black_moves()
+        moves = self.get_moves_for_color(WHITE if self.white_turn else BLACK)
         self.moves = self.verify_moves(moves)
         if len(self.moves) == 0:
             self.game_over = True
@@ -305,10 +348,7 @@ class GameState():
         return self.halfmove_clock >= 100
 
     def is_square_attacked(self, idx: int, by_white: bool) -> bool:
-        if by_white:
-            enemy_moves = self.get_white_moves(False)
-        else:
-            enemy_moves = self.get_black_moves(False)
+        enemy_moves = self.get_moves_for_color(WHITE if by_white else BLACK, False)
         for m in enemy_moves:
             if m.to_idx == idx:
                 return True
@@ -538,20 +578,103 @@ class GameState():
         self.stalemate = False
         self.winner = None
 
-    def bot_move(self):
+    def bot_move(self, difficulty="easy"):
         if len(self.moves) == 0:
             return
-        self.easy_bot()
+        if difficulty == "hard":
+            self.hard_bot()
+        elif difficulty == "medium":
+            self.medium_bot()
+        else:
+            self.easy_bot()
 
     def easy_bot(self):
-        captures = []
-        for move in self.moves:
-            if move.move_type == MoveType.CAPTURE:
-                captures.append(move)
-        if len(captures) != 0:
-            self.rand_move(captures)
+        captures = [m for m in self.moves if m.move_type == MoveType.CAPTURE]
+        self.rand_move(captures if captures else self.moves)
+
+    def medium_bot(self):
+        piece_values = {Pieces.QUEEN: 9, Pieces.ROOK: 5, Pieces.BISHOP: 3,
+                        Pieces.KNIGHT: 3, Pieces.PAWN: 1, Pieces.KING: 0}
+        captures = [m for m in self.moves if m.move_type == MoveType.CAPTURE]
+        if captures:
+            best_value = max(piece_values[m.captured[1]] for m in captures)
+            best_captures = [m for m in captures if piece_values[m.captured[1]] == best_value]
+            self.rand_move(best_captures)
         else:
             self.rand_move(self.moves)
+
+    def hard_bot(self):
+        bot_is_white = self.white_turn
+        best_move = None
+        best_score = float('-inf') if bot_is_white else float('inf')
+        for move in self.moves:
+            self.make_move(move)
+            self.white_turn = not self.white_turn
+            score = self.minimax(3, float('-inf'), float('inf'), not bot_is_white)
+            self.white_turn = not self.white_turn
+            self.undo_move(move)
+            if bot_is_white and score > best_score:
+                best_score = score
+                best_move = move
+            elif not bot_is_white and score < best_score:
+                best_score = score
+                best_move = move
+        if best_move:
+            self.make_move(best_move)
+            self.move_history.append(best_move)
+            self.switch_turn()
+
+    def minimax(self, depth: int, alpha: float, beta: float, maximizing: bool) -> float:
+        if depth == 0:
+            return self.evaluate_board()
+        moves = self.get_moves_for_color(WHITE if self.white_turn else BLACK)
+        moves = self.verify_moves(moves)
+        if len(moves) == 0:
+            if self.is_in_check(self.white_turn):
+                return float('-inf') if maximizing else float('inf')
+            return 0
+        if maximizing:
+            max_eval = float('-inf')
+            for move in moves:
+                self.make_move(move)
+                self.white_turn = not self.white_turn
+                eval_score = self.minimax(depth - 1, alpha, beta, False)
+                self.white_turn = not self.white_turn
+                self.undo_move(move)
+                max_eval = max(max_eval, eval_score)
+                alpha = max(alpha, eval_score)
+                if beta <= alpha:
+                    break
+            return max_eval
+        else:
+            min_eval = float('inf')
+            for move in moves:
+                self.make_move(move)
+                self.white_turn = not self.white_turn
+                eval_score = self.minimax(depth - 1, alpha, beta, True)
+                self.white_turn = not self.white_turn
+                self.undo_move(move)
+                min_eval = min(min_eval, eval_score)
+                beta = min(beta, eval_score)
+                if beta <= alpha:
+                    break
+            return min_eval
+
+    def evaluate_board(self) -> float:
+        piece_values = {Pieces.QUEEN: 90, Pieces.ROOK: 50, Pieces.BISHOP: 30,
+                        Pieces.KNIGHT: 30, Pieces.PAWN: 10, Pieces.KING: 0}
+        score = 0
+        for idx, square in enumerate(self.board):
+            if square == "  ":
+                continue
+            value = piece_values[square[1]]
+            if square[0] == WHITE:
+                table_idx = idx
+                score += value + PIECE_SQUARE_TABLES[square[1]][table_idx]
+            else:
+                table_idx = 63 - idx
+                score -= value + PIECE_SQUARE_TABLES[square[1]][table_idx]
+        return score
 
     def rand_move(self, moves: list[Move]):
         move = random.choice(moves)
